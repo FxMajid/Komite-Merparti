@@ -19,7 +19,8 @@ import {
   Lock,
   Key,
   LogOut,
-  Trash2
+  Trash2,
+  Edit2
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -87,6 +88,7 @@ export default function App() {
   const [dbStatus, setDbStatus] = useState<'connected' | 'error' | 'loading'>('loading');
   const [dbError, setDbError] = useState<string>('');
   const [isAddingAssessment, setIsAddingAssessment] = useState(false);
+  const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
   const [isAddingGroup, setIsAddingGroup] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -207,6 +209,52 @@ export default function App() {
       }
     } catch (error) {
       console.error("Error adding assessment:", error);
+    }
+  };
+
+  const handleUpdateAssessment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingAssessment) return;
+    try {
+      let finalScore = parseInt(editingAssessment.score.toString());
+      let criteriaData = null;
+
+      if (editingAssessment.subject === 'Fashion Show' && editingAssessment.criteria) {
+        const scores = Object.values(editingAssessment.criteria) as number[];
+        const sum = scores.reduce((a, b) => a + b, 0);
+        finalScore = Math.round(sum / scores.length);
+        criteriaData = editingAssessment.criteria;
+      }
+
+      const res = await fetch(`/api/assessments/${editingAssessment.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...editingAssessment,
+          score: finalScore,
+          criteria: criteriaData
+        })
+      });
+      if (res.ok) {
+        setEditingAssessment(null);
+        fetchData();
+      }
+    } catch (error) {
+      console.error("Error updating assessment:", error);
+    }
+  };
+
+  const handleDeleteAssessment = async (id: string) => {
+    if (!confirm('Apakah Anda yakin ingin menghapus penilaian ini?')) return;
+    try {
+      const res = await fetch(`/api/assessments/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error("Error deleting assessment:", error);
     }
   };
 
@@ -663,6 +711,7 @@ export default function App() {
                             <th className="px-6 py-4">Nilai</th>
                             <th className="px-6 py-4">Tanggal</th>
                             <th className="px-6 py-4">Status</th>
+                            <th className="px-6 py-4 text-right">Aksi</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -710,6 +759,24 @@ export default function App() {
                                 )}>
                                   {a.score >= 75 ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
                                   {a.score >= 75 ? 'Lulus' : 'Remedial'}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button 
+                                    onClick={() => setEditingAssessment(a)}
+                                    className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                                    title="Edit Penilaian"
+                                  >
+                                    <Edit2 size={16} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteAssessment(a.id)}
+                                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    title="Hapus Penilaian"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
                                 </div>
                               </td>
                             </tr>
@@ -860,11 +927,12 @@ export default function App() {
                           <th className="px-6 py-4">Nilai</th>
                           <th className="px-6 py-4">Keterangan</th>
                           <th className="px-6 py-4">Tanggal Input</th>
+                          <th className="px-6 py-4 text-right">Aksi</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {(Array.isArray(assessments) ? assessments : []).map((a) => (
-                          <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
+                          <tr key={a.id} className="hover:bg-slate-50/50 transition-colors group">
                             <td className="px-6 py-4">
                               <div>
                                 <p className="text-sm font-bold text-slate-900">{a.groupName}</p>
@@ -904,6 +972,24 @@ export default function App() {
                             </td>
                             <td className="px-6 py-4 text-sm text-slate-400 font-medium">
                               {new Date(a.date).toLocaleString('id-ID')}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button 
+                                  onClick={() => setEditingAssessment(a)}
+                                  className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors"
+                                  title="Edit Penilaian"
+                                >
+                                  <Edit2 size={16} />
+                                </button>
+                                <button 
+                                  onClick={() => handleDeleteAssessment(a.id)}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Hapus Penilaian"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1038,6 +1124,125 @@ export default function App() {
                     className="w-full bg-brand-600 hover:bg-brand-700 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-brand-600/20 active:scale-95 mt-4"
                   >
                     Simpan Penilaian
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {editingAssessment && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setEditingAssessment(null)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-xl font-bold text-slate-900">Edit Penilaian</h3>
+                  <button 
+                    onClick={() => setEditingAssessment(null)}
+                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
+                  >
+                    <PlusCircle className="rotate-45" size={24} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleUpdateAssessment} className="space-y-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Kelompok</label>
+                    <input 
+                      type="text"
+                      disabled
+                      value={editingAssessment.groupName}
+                      className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-500 outline-none cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Perlombaan</label>
+                      <input 
+                        type="text"
+                        disabled
+                        value={editingAssessment.subject}
+                        className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-500 outline-none cursor-not-allowed"
+                      />
+                    </div>
+                    {editingAssessment.subject !== 'Fashion Show' && (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nilai (0-100)</label>
+                        <input 
+                          type="number" 
+                          min="0" 
+                          max="100"
+                          required
+                          value={editingAssessment.score}
+                          onChange={(e) => setEditingAssessment({...editingAssessment, score: parseInt(e.target.value)})}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  {editingAssessment.subject === 'Fashion Show' && editingAssessment.criteria && (
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
+                      <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Kriteria Penilaian Fashion Show</h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {Object.keys(editingAssessment.criteria).map((criterion) => (
+                          <div key={criterion}>
+                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">{criterion}</label>
+                            <input 
+                              type="number"
+                              min="0"
+                              max="100"
+                              required
+                              value={editingAssessment.criteria?.[criterion]}
+                              onChange={(e) => setEditingAssessment({
+                                ...editingAssessment,
+                                criteria: {
+                                  ...editingAssessment.criteria!,
+                                  [criterion]: parseInt(e.target.value) || 0
+                                }
+                              })}
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="pt-4 border-top border-slate-200 flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-500">Rata-rata Nilai:</span>
+                        <span className="text-lg font-black text-brand-600">
+                          {Math.round((Object.values(editingAssessment.criteria) as number[]).reduce((a, b) => a + b, 0) / 4)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Catatan / Keterangan</label>
+                    <textarea 
+                      placeholder="Contoh: Ujian Tengah Semester..."
+                      value={editingAssessment.notes}
+                      onChange={(e) => setEditingAssessment({...editingAssessment, notes: e.target.value})}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all h-24 resize-none"
+                    />
+                  </div>
+
+                  <button 
+                    type="submit"
+                    className="w-full bg-brand-600 hover:bg-brand-700 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-brand-600/20 active:scale-95 mt-4"
+                  >
+                    Simpan Perubahan
                   </button>
                 </form>
               </div>

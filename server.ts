@@ -213,6 +213,51 @@ app.post("/api/assessments", async (req, res) => {
   }
 });
 
+app.put("/api/assessments/:id", async (req, res) => {
+  if (!db) return res.status(500).json({ 
+    error: "Database not initialized", 
+    details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
+  });
+  try {
+    const { group_id, subject, score, notes, criteria } = req.body;
+    
+    const updateData: any = {
+      score: Number(score),
+      notes: notes || "",
+    };
+    
+    if (group_id) updateData.group_id = group_id;
+    if (subject) updateData.subject = subject;
+    if (criteria !== undefined) updateData.criteria = criteria;
+
+    await db.collection("assessments").doc(req.params.id).update(updateData);
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Update assessment error:", error);
+    res.status(500).json({ 
+      error: "Failed to update assessment", 
+      message: error.message 
+    });
+  }
+});
+
+app.delete("/api/assessments/:id", async (req, res) => {
+  if (!db) return res.status(500).json({ 
+    error: "Database not initialized", 
+    details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
+  });
+  try {
+    await db.collection("assessments").doc(req.params.id).delete();
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Delete assessment error:", error);
+    res.status(500).json({ 
+      error: "Failed to delete assessment", 
+      message: error.message 
+    });
+  }
+});
+
 app.post("/api/groups", async (req, res) => {
   if (!db) return res.status(500).json({ 
     error: "Database not initialized", 
