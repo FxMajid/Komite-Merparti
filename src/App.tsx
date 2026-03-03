@@ -291,7 +291,7 @@ export default function App() {
                         <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">+2 Baru</span>
                       </div>
                       <p className="text-slate-500 text-sm font-medium">Total Siswa</p>
-                      <h3 className="text-3xl font-bold text-slate-900 mt-1">{summary?.stats.totalStudents || 0}</h3>
+                      <h3 className="text-3xl font-bold text-slate-900 mt-1">{summary?.stats?.totalStudents || 0}</h3>
                     </div>
 
                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
@@ -303,7 +303,7 @@ export default function App() {
                       </div>
                       <p className="text-slate-500 text-sm font-medium">Rata-rata Nilai</p>
                       <h3 className="text-3xl font-bold text-slate-900 mt-1">
-                        {summary?.stats.averageScore ? summary.stats.averageScore.toFixed(1) : '0'}
+                        {summary?.stats?.averageScore ? summary.stats.averageScore.toFixed(1) : '0'}
                       </h3>
                     </div>
 
@@ -315,7 +315,7 @@ export default function App() {
                         <span className="text-xs font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">Bulan Ini</span>
                       </div>
                       <p className="text-slate-500 text-sm font-medium">Total Penilaian</p>
-                      <h3 className="text-3xl font-bold text-slate-900 mt-1">{summary?.stats.totalAssessments || 0}</h3>
+                      <h3 className="text-3xl font-bold text-slate-900 mt-1">{summary?.stats?.totalAssessments || 0}</h3>
                     </div>
                   </div>
 
@@ -328,7 +328,7 @@ export default function App() {
                       </div>
                       <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={summary?.subjectStats}>
+                          <BarChart data={summary?.subjectStats || []}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
                             <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
@@ -337,7 +337,7 @@ export default function App() {
                               contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                             />
                             <Bar dataKey="avgScore" radius={[6, 6, 0, 0]} barSize={40}>
-                              {summary?.subjectStats.map((entry, index) => (
+                              {(summary?.subjectStats || []).map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                               ))}
                             </Bar>
@@ -356,7 +356,7 @@ export default function App() {
                       </div>
                       <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={assessments.slice(0, 10).reverse()}>
+                          <LineChart data={Array.isArray(assessments) ? assessments.slice(0, 10).reverse() : []}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <XAxis dataKey="studentName" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} dy={10} />
                             <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
@@ -400,7 +400,7 @@ export default function App() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {assessments.slice(0, 5).map((a) => (
+                          {(Array.isArray(assessments) ? assessments : []).slice(0, 5).map((a) => (
                             <tr key={a.id} className="hover:bg-slate-50/50 transition-colors group">
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
@@ -486,7 +486,7 @@ export default function App() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {students.map((s) => (
+                        {(Array.isArray(students) ? students : []).map((s) => (
                           <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
                             <td className="px-6 py-4 text-sm font-mono text-slate-400">#{s.id.toString().padStart(3, '0')}</td>
                             <td className="px-6 py-4">
@@ -570,7 +570,7 @@ export default function App() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {assessments.map((a) => (
+                        {(Array.isArray(assessments) ? assessments : []).map((a) => (
                           <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="px-6 py-4">
                               <div>
@@ -652,7 +652,7 @@ export default function App() {
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
                     >
                       <option value="">Pilih Siswa...</option>
-                      {students.map(s => (
+                      {(Array.isArray(students) ? students : []).map(s => (
                         <option key={s.id} value={s.id}>{s.name} ({s.class})</option>
                       ))}
                     </select>
