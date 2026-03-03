@@ -13,7 +13,15 @@ if (!admin.apps.length) {
   try {
     const projectId = process.env.FIREBASE_PROJECT_ID;
     const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+    let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    if (privateKey) {
+      // Handle both literal newlines and escaped \n strings
+      privateKey = privateKey.replace(/\\n/g, '\n');
+      // Remove any surrounding quotes that might have been pasted
+      if (privateKey.startsWith('"') && privateKey.endsWith('"')) {
+        privateKey = privateKey.substring(1, privateKey.length - 1);
+      }
+    }
 
     if (projectId && clientEmail && privateKey) {
       admin.initializeApp({

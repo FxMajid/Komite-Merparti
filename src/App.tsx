@@ -81,6 +81,7 @@ export default function App() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [dbStatus, setDbStatus] = useState<'connected' | 'error' | 'loading'>('loading');
+  const [dbError, setDbError] = useState<string>('');
   const [isAddingAssessment, setIsAddingAssessment] = useState(false);
   const [isAddingGroup, setIsAddingGroup] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -132,12 +133,16 @@ export default function App() {
         setAssessments(assessmentsData);
         setSummary(summaryData);
         setDbStatus('connected');
+        setDbError('');
       } else {
+        const errorData = await groupsRes.json().catch(() => ({}));
         setDbStatus('error');
+        setDbError(errorData.details || errorData.message || 'Gagal terhubung ke server');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error fetching data:", error);
       setDbStatus('error');
+      setDbError(error.message || 'Koneksi gagal');
     } finally {
       setLoading(false);
     }
@@ -321,6 +326,11 @@ export default function App() {
               <p className="text-sm font-semibold">
                 {dbStatus === 'connected' ? 'Database Terhubung' : dbStatus === 'loading' ? 'Menghubungkan...' : 'Database Terputus'}
               </p>
+              {dbError && dbStatus === 'error' && (
+                <p className="text-[10px] text-red-300 mt-1 leading-tight opacity-80">
+                  {dbError}
+                </p>
+              )}
               <div className="mt-3 flex items-center gap-2">
                 <div className={cn(
                   "w-2 h-2 rounded-full",
@@ -357,7 +367,7 @@ export default function App() {
           <div>
             <h2 className="text-xl font-bold text-slate-900">
               {activeTab === 'overview' && 'Dashboard Overview'}
-              {activeTab === 'students' && 'Manajemen Data Siswa'}
+              {activeTab === 'groups' && 'Manajemen Data Kelompok'}
               {activeTab === 'assessments' && 'Riwayat Penilaian'}
             </h2>
             <p className="text-sm text-slate-500">Selamat datang kembali, Admin</p>
@@ -372,13 +382,13 @@ export default function App() {
                 className="pl-10 pr-4 py-2 bg-slate-100 border-transparent focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 rounded-xl text-sm transition-all w-64"
               />
             </div>
-            <button 
-              onClick={() => activeTab === 'groups' ? setIsAddingGroup(true) : setIsAddingAssessment(true)}
-              className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-semibold transition-all shadow-lg shadow-brand-600/20 active:scale-95"
-            >
-              <PlusCircle size={18} />
-              <span>{activeTab === 'students' ? 'Tambah Siswa' : 'Input Nilai'}</span>
-            </button>
+              <button 
+                onClick={() => activeTab === 'groups' ? setIsAddingGroup(true) : setIsAddingAssessment(true)}
+                className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-semibold transition-all shadow-lg shadow-brand-600/20 active:scale-95"
+              >
+                <PlusCircle size={18} />
+                <span>{activeTab === 'groups' ? 'Tambah Kelompok' : 'Input Nilai'}</span>
+              </button>
           </div>
         </header>
 
