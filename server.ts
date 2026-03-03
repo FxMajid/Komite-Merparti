@@ -1,5 +1,4 @@
 import express from "express";
-import { createServer as createViteServer } from "vite";
 import admin from "firebase-admin";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -8,34 +7,47 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Initialize Firebase Admin
+let db: admin.firestore.Firestore | null = null;
+
 if (!admin.apps.length) {
   try {
+    const projectId = process.env.FIREBASE_PROJECT_ID;
+    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
     const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-    if (process.env.FIREBASE_PROJECT_ID) {
+
+    if (projectId && clientEmail && privateKey) {
       admin.initializeApp({
         credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: privateKey,
+          projectId,
+          clientEmail,
+          privateKey,
         }),
       });
+      db = admin.firestore();
       console.log("Firebase Admin initialized successfully");
     } else {
-      console.warn("Firebase environment variables missing. API will fail.");
+      console.warn("Firebase environment variables missing:", {
+        projectId: !!projectId,
+        clientEmail: !!clientEmail,
+        privateKey: !!privateKey
+      });
     }
   } catch (error) {
     console.error("Firebase Admin initialization error:", error);
   }
+} else {
+  db = admin.firestore();
 }
-
-const db = admin.apps.length ? admin.firestore() : null;
 
 const app = express();
 app.use(express.json());
 
 // API Routes
 app.get("/api/summary", async (req, res) => {
-  if (!db) return res.status(500).json({ error: "Database not initialized" });
+  if (!db) return res.status(500).json({ 
+    error: "Database not initialized", 
+    details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
+  });
   try {
     const assessmentsSnapshot = await db.collection("assessments").get();
     const groupsSnapshot = await db.collection("groups").get();
@@ -72,7 +84,10 @@ app.get("/api/summary", async (req, res) => {
 });
 
 app.get("/api/groups", async (req, res) => {
-  if (!db) return res.status(500).json({ error: "Database not initialized" });
+  if (!db) return res.status(500).json({ 
+    error: "Database not initialized", 
+    details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
+  });
   try {
     const groupsSnapshot = await db.collection("groups").get();
     const assessmentsSnapshot = await db.collection("assessments").get();
@@ -96,7 +111,10 @@ app.get("/api/groups", async (req, res) => {
 });
 
 app.get("/api/assessments", async (req, res) => {
-  if (!db) return res.status(500).json({ error: "Database not initialized" });
+  if (!db) return res.status(500).json({ 
+    error: "Database not initialized", 
+    details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
+  });
   try {
     const assessmentsSnapshot = await db.collection("assessments").orderBy("date", "desc").get();
     const groupsSnapshot = await db.collection("groups").get();
@@ -124,7 +142,10 @@ app.get("/api/assessments", async (req, res) => {
 });
 
 app.post("/api/assessments", async (req, res) => {
-  if (!db) return res.status(500).json({ error: "Database not initialized" });
+  if (!db) return res.status(500).json({ 
+    error: "Database not initialized", 
+    details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
+  });
   try {
     const { group_id, subject, score, notes } = req.body;
     const docRef = await db.collection("assessments").add({
@@ -141,7 +162,10 @@ app.post("/api/assessments", async (req, res) => {
 });
 
 app.post("/api/groups", async (req, res) => {
-  if (!db) return res.status(500).json({ error: "Database not initialized" });
+  if (!db) return res.status(500).json({ 
+    error: "Database not initialized", 
+    details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
+  });
   try {
     const { name, category } = req.body;
     const docRef = await db.collection("groups").add({
@@ -201,6 +225,7 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
