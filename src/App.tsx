@@ -577,62 +577,6 @@ export default function App() {
 
                   {/* Charts Section */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
-                      <div className="flex items-center justify-between mb-8">
-                        <h4 className="font-bold text-slate-900">Rata-rata per Perlombaan</h4>
-                        <button className="text-slate-400 hover:text-slate-600"><MoreVertical size={20} /></button>
-                      </div>
-                      <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={summary?.subjectStats || []}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                            <Tooltip 
-                              cursor={{ fill: '#f8fafc' }}
-                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                            />
-                            <Bar dataKey="avgScore" radius={[6, 6, 0, 0]} barSize={40}>
-                              {(summary?.subjectStats || []).map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-
-                    <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
-                      <div className="flex items-center justify-between mb-8">
-                        <h4 className="font-bold text-slate-900">Distribusi Nilai</h4>
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
-                          <div className="w-3 h-3 rounded-full bg-brand-500" />
-                          <span>Aktif</span>
-                        </div>
-                      </div>
-                      <div className="h-[300px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={Array.isArray(assessments) ? assessments.slice(0, 10).reverse() : []}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="groupName" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
-                            <Tooltip 
-                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                            />
-                            <Line 
-                              type="monotone" 
-                              dataKey="score" 
-                              stroke="#16a34a" 
-                              strokeWidth={3} 
-                              dot={{ r: 6, fill: '#16a34a', strokeWidth: 2, stroke: '#fff' }}
-                              activeDot={{ r: 8, strokeWidth: 0 }}
-                              animationDuration={1000}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </div>
-
                     <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2">
                       <div className="flex items-center justify-between mb-8">
                         <div>
