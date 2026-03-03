@@ -1,0 +1,5 @@
+{
+  "name": "Sistem Penilaian Dashboard",
+  "description": "Dashboard penilaian siswa dengan integrasi database SQLite untuk manajemen nilai dan statistik.",
+  "requestFramePermissions": []
+}

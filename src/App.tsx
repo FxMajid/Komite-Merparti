@@ -1,0 +1,779 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  LayoutDashboard, 
+  Users, 
+  GraduationCap, 
+  PlusCircle, 
+  TrendingUp, 
+  Search,
+  MoreVertical,
+  ChevronRight,
+  Filter,
+  Download,
+  Calendar,
+  BookOpen,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  LineChart, 
+  Line,
+  Cell,
+  PieChart,
+  Pie
+} from 'recharts';
+import { motion, AnimatePresence } from 'motion/react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
+
+interface Student {
+  id: number;
+  name: string;
+  class: string;
+  avgScore: number | null;
+}
+
+interface Assessment {
+  id: number;
+  student_id: number;
+  studentName: string;
+  studentClass: string;
+  subject: string;
+  score: number;
+  date: string;
+  notes: string;
+}
+
+interface Summary {
+  stats: {
+    totalStudents: number;
+    averageScore: number;
+    totalAssessments: number;
+  };
+  subjectStats: {
+    subject: string;
+    avgScore: number;
+  }[];
+}
+
+export default function App() {
+  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'assessments'>('overview');
+  const [students, setStudents] = useState<Student[]>([]);
+  const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [isAddingAssessment, setIsAddingAssessment] = useState(false);
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Form states
+  const [newAssessment, setNewAssessment] = useState({
+    student_id: '',
+    subject: 'Matematika',
+    score: 80,
+    notes: ''
+  });
+
+  const [newStudent, setNewStudent] = useState({
+    name: '',
+    class: 'XII-A'
+  });
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const [studentsRes, assessmentsRes, summaryRes] = await Promise.all([
+        fetch('/api/students'),
+        fetch('/api/assessments'),
+        fetch('/api/summary')
+      ]);
+      
+      const studentsData = await studentsRes.json();
+      const assessmentsData = await assessmentsRes.json();
+      const summaryData = await summaryRes.json();
+      
+      setStudents(studentsData);
+      setAssessments(assessmentsData);
+      setSummary(summaryData);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleAddAssessment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/assessments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...newAssessment,
+          student_id: parseInt(newAssessment.student_id),
+          score: parseInt(newAssessment.score.toString())
+        })
+      });
+      if (res.ok) {
+        setIsAddingAssessment(false);
+        setNewAssessment({ student_id: '', subject: 'Matematika', score: 80, notes: '' });
+        fetchData();
+      }
+    } catch (error) {
+      console.error("Error adding assessment:", error);
+    }
+  };
+
+  const handleAddStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch('/api/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newStudent)
+      });
+      if (res.ok) {
+        setIsAddingStudent(false);
+        setNewStudent({ name: '', class: 'XII-A' });
+        fetchData();
+      }
+    } catch (error) {
+      console.error("Error adding student:", error);
+    }
+  };
+
+  const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+  return (
+    <div className="min-h-screen flex bg-slate-50">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col sticky top-0 h-screen">
+        <div className="p-6 border-bottom border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-brand-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-brand-500/20">
+              <GraduationCap size={24} />
+            </div>
+            <div>
+              <h1 className="font-bold text-slate-900 leading-tight">EduScore</h1>
+              <p className="text-xs text-slate-500 font-medium">Sistem Penilaian</p>
+            </div>
+          </div>
+        </div>
+
+        <nav className="flex-1 p-4 space-y-1">
+          <button 
+            onClick={() => setActiveTab('overview')}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
+              activeTab === 'overview' 
+                ? "bg-brand-50 text-brand-700 font-semibold" 
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            )}
+          >
+            <LayoutDashboard size={20} />
+            <span>Overview</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('students')}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
+              activeTab === 'students' 
+                ? "bg-brand-50 text-brand-700 font-semibold" 
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            )}
+          >
+            <Users size={20} />
+            <span>Data Siswa</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab('assessments')}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
+              activeTab === 'assessments' 
+                ? "bg-brand-50 text-brand-700 font-semibold" 
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            )}
+          >
+            <BookOpen size={20} />
+            <span>Riwayat Nilai</span>
+          </button>
+        </nav>
+
+        <div className="p-4 border-t border-slate-100">
+          <div className="bg-slate-900 rounded-2xl p-4 text-white relative overflow-hidden group">
+            <div className="relative z-10">
+              <p className="text-xs text-slate-400 font-medium mb-1">Status Sistem</p>
+              <p className="text-sm font-semibold">Database Terhubung</p>
+              <div className="mt-3 flex items-center gap-2">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
+                <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400">Online</span>
+              </div>
+            </div>
+            <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
+              <CheckCircle2 size={80} />
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main className="flex-1 flex flex-col">
+        {/* Header */}
+        <header className="h-20 bg-white border-b border-slate-200 px-8 flex items-center justify-between sticky top-0 z-20">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">
+              {activeTab === 'overview' && 'Dashboard Overview'}
+              {activeTab === 'students' && 'Manajemen Data Siswa'}
+              {activeTab === 'assessments' && 'Riwayat Penilaian'}
+            </h2>
+            <p className="text-sm text-slate-500">Selamat datang kembali, Admin</p>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <div className="relative hidden md:block">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+              <input 
+                type="text" 
+                placeholder="Cari data..." 
+                className="pl-10 pr-4 py-2 bg-slate-100 border-transparent focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 rounded-xl text-sm transition-all w-64"
+              />
+            </div>
+            <button 
+              onClick={() => activeTab === 'students' ? setIsAddingStudent(true) : setIsAddingAssessment(true)}
+              className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-semibold transition-all shadow-lg shadow-brand-600/20 active:scale-95"
+            >
+              <PlusCircle size={18} />
+              <span>{activeTab === 'students' ? 'Tambah Siswa' : 'Input Nilai'}</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <div className="p-8 flex-1 overflow-auto">
+          {loading ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-12 h-12 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin" />
+                <p className="text-slate-500 font-medium animate-pulse">Memuat data...</p>
+              </div>
+            </div>
+          ) : (
+            <AnimatePresence mode="wait">
+              {activeTab === 'overview' && (
+                <motion.div 
+                  key="overview"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="space-y-8"
+                >
+                  {/* Stats Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                          <Users size={24} />
+                        </div>
+                        <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">+2 Baru</span>
+                      </div>
+                      <p className="text-slate-500 text-sm font-medium">Total Siswa</p>
+                      <h3 className="text-3xl font-bold text-slate-900 mt-1">{summary?.stats.totalStudents || 0}</h3>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="p-3 bg-brand-50 text-brand-600 rounded-xl">
+                          <TrendingUp size={24} />
+                        </div>
+                        <span className="text-xs font-bold text-brand-600 bg-brand-50 px-2 py-1 rounded-lg">Stabil</span>
+                      </div>
+                      <p className="text-slate-500 text-sm font-medium">Rata-rata Nilai</p>
+                      <h3 className="text-3xl font-bold text-slate-900 mt-1">
+                        {summary?.stats.averageScore ? summary.stats.averageScore.toFixed(1) : '0'}
+                      </h3>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
+                          <BookOpen size={24} />
+                        </div>
+                        <span className="text-xs font-bold text-slate-500 bg-slate-50 px-2 py-1 rounded-lg">Bulan Ini</span>
+                      </div>
+                      <p className="text-slate-500 text-sm font-medium">Total Penilaian</p>
+                      <h3 className="text-3xl font-bold text-slate-900 mt-1">{summary?.stats.totalAssessments || 0}</h3>
+                    </div>
+                  </div>
+
+                  {/* Charts Section */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+                      <div className="flex items-center justify-between mb-8">
+                        <h4 className="font-bold text-slate-900">Rata-rata per Mata Pelajaran</h4>
+                        <button className="text-slate-400 hover:text-slate-600"><MoreVertical size={20} /></button>
+                      </div>
+                      <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={summary?.subjectStats}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis dataKey="subject" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                            <Tooltip 
+                              cursor={{ fill: '#f8fafc' }}
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                            />
+                            <Bar dataKey="avgScore" radius={[6, 6, 0, 0]} barSize={40}>
+                              {summary?.subjectStats.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
+                      <div className="flex items-center justify-between mb-8">
+                        <h4 className="font-bold text-slate-900">Distribusi Nilai</h4>
+                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500">
+                          <div className="w-3 h-3 rounded-full bg-brand-500" />
+                          <span>Aktif</span>
+                        </div>
+                      </div>
+                      <div className="h-[300px] w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={assessments.slice(0, 10).reverse()}>
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <XAxis dataKey="studentName" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} dy={10} />
+                            <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
+                            <Tooltip 
+                              contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                            />
+                            <Line 
+                              type="monotone" 
+                              dataKey="score" 
+                              stroke="#16a34a" 
+                              strokeWidth={3} 
+                              dot={{ r: 6, fill: '#16a34a', strokeWidth: 2, stroke: '#fff' }}
+                              activeDot={{ r: 8, strokeWidth: 0 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recent Activity */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                      <h4 className="font-bold text-slate-900">Penilaian Terbaru</h4>
+                      <button 
+                        onClick={() => setActiveTab('assessments')}
+                        className="text-sm font-bold text-brand-600 hover:text-brand-700 flex items-center gap-1"
+                      >
+                        Lihat Semua <ChevronRight size={16} />
+                      </button>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
+                            <th className="px-6 py-4">Siswa</th>
+                            <th className="px-6 py-4">Mata Pelajaran</th>
+                            <th className="px-6 py-4">Nilai</th>
+                            <th className="px-6 py-4">Tanggal</th>
+                            <th className="px-6 py-4">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {assessments.slice(0, 5).map((a) => (
+                            <tr key={a.id} className="hover:bg-slate-50/50 transition-colors group">
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs">
+                                    {a.studentName.charAt(0)}
+                                  </div>
+                                  <div>
+                                    <p className="text-sm font-bold text-slate-900">{a.studentName}</p>
+                                    <p className="text-xs text-slate-500">{a.studentClass}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className="text-sm text-slate-600 font-medium">{a.subject}</span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={cn(
+                                  "text-sm font-bold",
+                                  a.score >= 75 ? "text-emerald-600" : "text-amber-600"
+                                )}>
+                                  {a.score}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4 text-sm text-slate-500">
+                                {new Date(a.date).toLocaleDateString('id-ID')}
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className={cn(
+                                  "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                                  a.score >= 75 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                                )}>
+                                  {a.score >= 75 ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+                                  {a.score >= 75 ? 'Lulus' : 'Remedial'}
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'students' && (
+                <motion.div 
+                  key="students"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+                >
+                  <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input 
+                          type="text" 
+                          placeholder="Cari siswa..." 
+                          className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all w-full sm:w-64"
+                        />
+                      </div>
+                      <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors">
+                        <Filter size={20} />
+                      </button>
+                    </div>
+                    <button className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors">
+                      <Download size={18} />
+                      Export Data
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
+                          <th className="px-6 py-4">ID</th>
+                          <th className="px-6 py-4">Nama Lengkap</th>
+                          <th className="px-6 py-4">Kelas</th>
+                          <th className="px-6 py-4">Rata-rata Nilai</th>
+                          <th className="px-6 py-4">Status Akademik</th>
+                          <th className="px-6 py-4">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {students.map((s) => (
+                          <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
+                            <td className="px-6 py-4 text-sm font-mono text-slate-400">#{s.id.toString().padStart(3, '0')}</td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-700 font-bold text-sm">
+                                  {s.name.charAt(0)}
+                                </div>
+                                <span className="text-sm font-bold text-slate-900">{s.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-600 font-medium">{s.class}</td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden">
+                                  <div 
+                                    className={cn(
+                                      "h-full rounded-full transition-all duration-1000",
+                                      (s.avgScore || 0) >= 75 ? "bg-emerald-500" : "bg-amber-500"
+                                    )}
+                                    style={{ width: `${s.avgScore || 0}%` }}
+                                  />
+                                </div>
+                                <span className="text-sm font-bold text-slate-700">
+                                  {s.avgScore ? s.avgScore.toFixed(1) : 'N/A'}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={cn(
+                                "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider",
+                                (s.avgScore || 0) >= 75 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                              )}>
+                                {(s.avgScore || 0) >= 75 ? 'Sangat Baik' : 'Perlu Bimbingan'}
+                              </span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all">
+                                <MoreVertical size={18} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'assessments' && (
+                <motion.div 
+                  key="assessments"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+                >
+                  <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="text-slate-400" size={20} />
+                      <h4 className="font-bold text-slate-900">Riwayat Penilaian Lengkap</h4>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-slate-500">Urutkan:</span>
+                      <select className="text-xs font-bold text-slate-900 bg-slate-50 border-none rounded-lg focus:ring-0 cursor-pointer">
+                        <option>Terbaru</option>
+                        <option>Terlama</option>
+                        <option>Nilai Tertinggi</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
+                          <th className="px-6 py-4">Siswa</th>
+                          <th className="px-6 py-4">Mata Pelajaran</th>
+                          <th className="px-6 py-4">Nilai</th>
+                          <th className="px-6 py-4">Keterangan</th>
+                          <th className="px-6 py-4">Tanggal Input</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {assessments.map((a) => (
+                          <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="px-6 py-4">
+                              <div>
+                                <p className="text-sm font-bold text-slate-900">{a.studentName}</p>
+                                <p className="text-xs text-slate-500">{a.studentClass}</p>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-brand-500" />
+                                <span className="text-sm text-slate-600 font-medium">{a.subject}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <span className={cn(
+                                  "text-sm font-bold px-2 py-0.5 rounded-lg",
+                                  a.score >= 75 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                                )}>
+                                  {a.score}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm text-slate-500 italic max-w-xs truncate">
+                                "{a.notes || 'Tidak ada catatan'}"
+                              </p>
+                            </td>
+                            <td className="px-6 py-4 text-sm text-slate-400 font-medium">
+                              {new Date(a.date).toLocaleString('id-ID')}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          )}
+        </div>
+      </main>
+
+      {/* Modals */}
+      <AnimatePresence>
+        {isAddingAssessment && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAddingAssessment(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-xl font-bold text-slate-900">Input Nilai Baru</h3>
+                  <button 
+                    onClick={() => setIsAddingAssessment(false)}
+                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
+                  >
+                    <PlusCircle className="rotate-45" size={24} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleAddAssessment} className="space-y-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pilih Siswa</label>
+                    <select 
+                      required
+                      value={newAssessment.student_id}
+                      onChange={(e) => setNewAssessment({...newAssessment, student_id: e.target.value})}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                    >
+                      <option value="">Pilih Siswa...</option>
+                      {students.map(s => (
+                        <option key={s.id} value={s.id}>{s.name} ({s.class})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mata Pelajaran</label>
+                      <select 
+                        value={newAssessment.subject}
+                        onChange={(e) => setNewAssessment({...newAssessment, subject: e.target.value})}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                      >
+                        <option>Matematika</option>
+                        <option>Bahasa Indonesia</option>
+                        <option>Bahasa Inggris</option>
+                        <option>Fisika</option>
+                        <option>Biologi</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nilai (0-100)</label>
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max="100"
+                        required
+                        value={newAssessment.score}
+                        onChange={(e) => setNewAssessment({...newAssessment, score: parseInt(e.target.value)})}
+                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Catatan / Keterangan</label>
+                    <textarea 
+                      placeholder="Contoh: Ujian Tengah Semester..."
+                      value={newAssessment.notes}
+                      onChange={(e) => setNewAssessment({...newAssessment, notes: e.target.value})}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all h-24 resize-none"
+                    />
+                  </div>
+
+                  <button 
+                    type="submit"
+                    className="w-full bg-brand-600 hover:bg-brand-700 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-brand-600/20 active:scale-95 mt-4"
+                  >
+                    Simpan Penilaian
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {isAddingStudent && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAddingStudent(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-xl font-bold text-slate-900">Tambah Siswa Baru</h3>
+                  <button 
+                    onClick={() => setIsAddingStudent(false)}
+                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
+                  >
+                    <PlusCircle className="rotate-45" size={24} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleAddStudent} className="space-y-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nama Lengkap</label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="Masukkan nama lengkap..."
+                      value={newStudent.name}
+                      onChange={(e) => setNewStudent({...newStudent, name: e.target.value})}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Kelas</label>
+                    <select 
+                      value={newStudent.class}
+                      onChange={(e) => setNewStudent({...newStudent, class: e.target.value})}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                    >
+                      <option>XII-A</option>
+                      <option>XII-B</option>
+                      <option>XI-A</option>
+                      <option>XI-B</option>
+                    </select>
+                  </div>
+
+                  <button 
+                    type="submit"
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-slate-900/20 active:scale-95 mt-4"
+                  >
+                    Daftarkan Siswa
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
