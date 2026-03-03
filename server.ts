@@ -78,8 +78,13 @@ app.get("/api/summary", async (req, res) => {
       stats: { totalGroups, averageScore, totalAssessments }, 
       subjectStats 
     });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch summary" });
+  } catch (error: any) {
+    console.error("Summary error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch summary", 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
@@ -105,8 +110,12 @@ app.get("/api/groups", async (req, res) => {
     });
     
     res.json(groups);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch groups" });
+  } catch (error: any) {
+    console.error("Groups error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch groups", 
+      message: error.message 
+    });
   }
 });
 
@@ -136,8 +145,12 @@ app.get("/api/assessments", async (req, res) => {
     });
     
     res.json(assessments);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch assessments" });
+  } catch (error: any) {
+    console.error("Assessments error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch assessments", 
+      message: error.message 
+    });
   }
 });
 
@@ -209,6 +222,21 @@ app.post("/api/seed", async (req, res) => {
   if (!db) return res.status(500).json({ error: "Database not initialized" });
   await seedGroups();
   res.json({ message: "Seeding triggered" });
+});
+
+// Debug endpoint
+app.get("/api/debug", (req, res) => {
+  res.json({
+    dbInitialized: !!db,
+    env: {
+      projectId: !!process.env.FIREBASE_PROJECT_ID,
+      clientEmail: !!process.env.FIREBASE_CLIENT_EMAIL,
+      privateKey: !!process.env.FIREBASE_PRIVATE_KEY,
+      nodeEnv: process.env.NODE_ENV,
+      vercel: !!process.env.VERCEL
+    },
+    adminApps: admin.apps.length
+  });
 });
 
 async function startServer() {
