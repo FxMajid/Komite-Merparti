@@ -170,8 +170,12 @@ app.post("/api/assessments", async (req, res) => {
       date: new Date().toISOString()
     });
     res.json({ id: docRef.id });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to add assessment" });
+  } catch (error: any) {
+    console.error("Assessments POST error:", error);
+    res.status(500).json({ 
+      error: "Failed to add assessment", 
+      message: error.message 
+    });
   }
 });
 
@@ -187,8 +191,12 @@ app.post("/api/groups", async (req, res) => {
       category
     });
     res.json({ id: docRef.id });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to add group" });
+  } catch (error: any) {
+    console.error("Groups POST error:", error);
+    res.status(500).json({ 
+      error: "Failed to add group", 
+      message: error.message 
+    });
   }
 });
 
