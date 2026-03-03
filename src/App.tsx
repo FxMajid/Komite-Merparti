@@ -80,6 +80,7 @@ export default function App() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [dbStatus, setDbStatus] = useState<'connected' | 'error' | 'loading'>('loading');
   const [isAddingAssessment, setIsAddingAssessment] = useState(false);
   const [isAddingGroup, setIsAddingGroup] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -122,15 +123,21 @@ export default function App() {
         fetch('/api/summary')
       ]);
       
-      const groupsData = await groupsRes.json();
-      const assessmentsData = await assessmentsRes.json();
-      const summaryData = await summaryRes.json();
-      
-      setGroups(groupsData);
-      setAssessments(assessmentsData);
-      setSummary(summaryData);
+      if (groupsRes.ok && assessmentsRes.ok && summaryRes.ok) {
+        const groupsData = await groupsRes.json();
+        const assessmentsData = await assessmentsRes.json();
+        const summaryData = await summaryRes.json();
+        
+        setGroups(groupsData);
+        setAssessments(assessmentsData);
+        setSummary(summaryData);
+        setDbStatus('connected');
+      } else {
+        setDbStatus('error');
+      }
     } catch (error) {
       console.error("Error fetching data:", error);
+      setDbStatus('error');
     } finally {
       setLoading(false);
     }
@@ -311,10 +318,20 @@ export default function App() {
           <div className="bg-slate-900 rounded-2xl p-4 text-white relative overflow-hidden group">
             <div className="relative z-10">
               <p className="text-xs text-slate-400 font-medium mb-1">Status Sistem</p>
-              <p className="text-sm font-semibold">Database Terhubung</p>
+              <p className="text-sm font-semibold">
+                {dbStatus === 'connected' ? 'Database Terhubung' : dbStatus === 'loading' ? 'Menghubungkan...' : 'Database Terputus'}
+              </p>
               <div className="mt-3 flex items-center gap-2">
-                <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
-                <span className="text-[10px] uppercase tracking-wider font-bold text-emerald-400">Online</span>
+                <div className={cn(
+                  "w-2 h-2 rounded-full",
+                  dbStatus === 'connected' ? "bg-emerald-400 animate-pulse" : dbStatus === 'loading' ? "bg-amber-400 animate-pulse" : "bg-red-400"
+                )} />
+                <span className={cn(
+                  "text-[10px] uppercase tracking-wider font-bold",
+                  dbStatus === 'connected' ? "text-emerald-400" : dbStatus === 'loading' ? "text-amber-400" : "text-red-400"
+                )}>
+                  {dbStatus === 'connected' ? 'Online' : dbStatus === 'loading' ? 'Loading' : 'Offline'}
+                </span>
               </div>
             </div>
             <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-110 transition-transform duration-500">
@@ -395,6 +412,26 @@ export default function App() {
                       </div>
                       <p className="text-slate-500 text-sm font-medium">Total Kelompok</p>
                       <h3 className="text-3xl font-bold text-slate-900 mt-1">{summary?.stats?.totalGroups || 0}</h3>
+                      {groups.length === 0 && !loading && (
+                        <button 
+                          onClick={async () => {
+                            try {
+                              const res = await fetch('/api/seed', { method: 'POST' });
+                              if (res.ok) {
+                                fetchData();
+                                alert('Data kelompok berhasil di-seed!');
+                              } else {
+                                alert('Gagal seeding data. Pastikan Firebase sudah dikonfigurasi.');
+                              }
+                            } catch (e) {
+                              alert('Error saat seeding data.');
+                            }
+                          }}
+                          className="mt-4 text-xs font-bold text-brand-600 hover:underline flex items-center gap-1"
+                        >
+                          <Plus size={12} /> Seed Data Kelompok
+                        </button>
+                      )}
                     </div>
 
                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">

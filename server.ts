@@ -180,11 +180,24 @@ async function seedGroups() {
   }
 }
 
+// Manual Seed Endpoint
+app.post("/api/seed", async (req, res) => {
+  if (!db) return res.status(500).json({ error: "Database not initialized" });
+  await seedGroups();
+  res.json({ message: "Seeding triggered" });
+});
+
 async function startServer() {
   const PORT = 3000;
   
+  console.log("Starting server...");
+  
   // Seed initial data
-  await seedGroups();
+  if (db) {
+    await seedGroups();
+  } else {
+    console.error("Database not available for seeding");
+  }
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
@@ -205,7 +218,9 @@ async function startServer() {
   });
 }
 
-if (process.env.NODE_ENV !== "production") {
+// Start server if not in production (Vercel)
+// In AI Studio, we usually want to start the server
+if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
   startServer();
 }
 
