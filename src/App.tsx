@@ -88,7 +88,7 @@ export default function App() {
   // Form states
   const [newAssessment, setNewAssessment] = useState({
     group_id: '',
-    subject: 'Matematika',
+    subject: 'Merpati Ekor Kata',
     score: 80,
     notes: ''
   });
@@ -164,7 +164,7 @@ export default function App() {
       });
       if (res.ok) {
         setIsAddingAssessment(false);
-        setNewAssessment({ group_id: '', subject: 'Matematika', score: 80, notes: '' });
+        setNewAssessment({ group_id: '', subject: 'Merpati Ekor Kata', score: 80, notes: '' });
         fetchData();
       }
     } catch (error) {
@@ -191,7 +191,6 @@ export default function App() {
   };
 
   const handleDeleteGroup = async (id: string) => {
-    alert(`Mencoba menghapus kelompok ID: ${id}`);
     console.log("Attempting to delete group with ID:", id);
     if (window.confirm('Apakah Anda yakin ingin menghapus kelompok ini? Semua data penilaian terkait juga akan dihapus.')) {
       try {
@@ -494,7 +493,7 @@ export default function App() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                     <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm">
                       <div className="flex items-center justify-between mb-8">
-                        <h4 className="font-bold text-slate-900">Rata-rata per Mata Pelajaran</h4>
+                        <h4 className="font-bold text-slate-900">Rata-rata per Perlombaan</h4>
                         <button className="text-slate-400 hover:text-slate-600"><MoreVertical size={20} /></button>
                       </div>
                       <div className="h-[300px] w-full">
@@ -564,7 +563,7 @@ export default function App() {
                         <thead>
                           <tr className="bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
                             <th className="px-6 py-4">Kelompok</th>
-                            <th className="px-6 py-4">Mata Pelajaran</th>
+                            <th className="px-6 py-4">Perlombaan</th>
                             <th className="px-6 py-4">Nilai</th>
                             <th className="px-6 py-4">Tanggal</th>
                             <th className="px-6 py-4">Status</th>
@@ -750,7 +749,7 @@ export default function App() {
                       <thead>
                         <tr className="bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
                           <th className="px-6 py-4">Kelompok</th>
-                          <th className="px-6 py-4">Mata Pelajaran</th>
+                          <th className="px-6 py-4">Perlombaan</th>
                           <th className="px-6 py-4">Nilai</th>
                           <th className="px-6 py-4">Keterangan</th>
                           <th className="px-6 py-4">Tanggal Input</th>
@@ -846,17 +845,14 @@ export default function App() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Mata Pelajaran</label>
+                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Perlombaan</label>
                       <select 
                         value={newAssessment.subject}
                         onChange={(e) => setNewAssessment({...newAssessment, subject: e.target.value})}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
                       >
-                        <option>Matematika</option>
-                        <option>Bahasa Indonesia</option>
-                        <option>Bahasa Inggris</option>
-                        <option>Fisika</option>
-                        <option>Biologi</option>
+                        <option>Merpati Ekor Kata</option>
+                        <option>Fashion Show</option>
                       </select>
                     </div>
                     <div>
