@@ -154,8 +154,37 @@ app.post("/api/groups", async (req, res) => {
   }
 });
 
+// Seed Groups Function
+async function seedGroups() {
+  if (!db) return;
+  const groupsToSeed = [
+    "KETUPAT", "OPOR", "MUDIK", "THR", 
+    "NYEPI", "HENING", "BALI", "CATUR"
+  ];
+  
+  try {
+    const groupsSnapshot = await db.collection("groups").get();
+    const existingNames = groupsSnapshot.docs.map(doc => doc.data().name);
+    
+    for (const name of groupsToSeed) {
+      if (!existingNames.includes(name)) {
+        await db.collection("groups").add({
+          name,
+          category: "Kategori A"
+        });
+        console.log(`Seeded group: ${name}`);
+      }
+    }
+  } catch (error) {
+    console.error("Error seeding groups:", error);
+  }
+}
+
 async function startServer() {
   const PORT = 3000;
+  
+  // Seed initial data
+  await seedGroups();
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
