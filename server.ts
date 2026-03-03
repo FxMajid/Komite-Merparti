@@ -22,9 +22,10 @@ if (!admin.apps.length) {
           clientEmail,
           privateKey,
         }),
+        projectId: projectId
       });
       db = admin.firestore();
-      console.log("Firebase Admin initialized successfully");
+      console.log("Firebase Admin initialized successfully for project:", projectId);
     } else {
       console.warn("Firebase environment variables missing:", {
         projectId: !!projectId,
