@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
+  UserPlus,
+  Plus,
   GraduationCap, 
   PlusCircle, 
   TrendingUp, 
@@ -13,7 +15,10 @@ import {
   Calendar,
   BookOpen,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Lock,
+  Key,
+  LogOut
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -37,18 +42,18 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-interface Student {
+interface Group {
   id: number;
   name: string;
-  class: string;
+  category: string;
   avgScore: number | null;
 }
 
 interface Assessment {
   id: number;
-  student_id: number;
-  studentName: string;
-  studentClass: string;
+  group_id: number;
+  groupName: string;
+  groupCategory: string;
   subject: string;
   score: number;
   date: string;
@@ -57,7 +62,7 @@ interface Assessment {
 
 interface Summary {
   stats: {
-    totalStudents: number;
+    totalGroups: number;
     averageScore: number;
     totalAssessments: number;
   };
@@ -68,41 +73,60 @@ interface Summary {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'assessments'>('overview');
-  const [students, setStudents] = useState<Student[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
+  const [loginError, setLoginError] = useState('');
+  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'assessments'>('overview');
+  const [groups, setGroups] = useState<Group[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [isAddingAssessment, setIsAddingAssessment] = useState(false);
-  const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [isAddingGroup, setIsAddingGroup] = useState(false);
   const [loading, setLoading] = useState(true);
 
   // Form states
   const [newAssessment, setNewAssessment] = useState({
-    student_id: '',
+    group_id: '',
     subject: 'Matematika',
     score: 80,
     notes: ''
   });
 
-  const [newStudent, setNewStudent] = useState({
+  const [newGroup, setNewGroup] = useState({
     name: '',
-    class: 'XII-A'
+    category: 'Kategori A'
   });
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (loginForm.username === 'admin' && loginForm.password === 'kerja') {
+      setIsLoggedIn(true);
+      localStorage.setItem('isLoggedIn', 'true');
+      setLoginError('');
+    } else {
+      setLoginError('Username atau password salah');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsLoggedIn(false);
+    localStorage.removeItem('isLoggedIn');
+  };
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [studentsRes, assessmentsRes, summaryRes] = await Promise.all([
-        fetch('/api/students'),
+      const [groupsRes, assessmentsRes, summaryRes] = await Promise.all([
+        fetch('/api/groups'),
         fetch('/api/assessments'),
         fetch('/api/summary')
       ]);
       
-      const studentsData = await studentsRes.json();
+      const groupsData = await groupsRes.json();
       const assessmentsData = await assessmentsRes.json();
       const summaryData = await summaryRes.json();
       
-      setStudents(studentsData);
+      setGroups(groupsData);
       setAssessments(assessmentsData);
       setSummary(summaryData);
     } catch (error) {
@@ -124,13 +148,13 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...newAssessment,
-          student_id: parseInt(newAssessment.student_id),
+          group_id: newAssessment.group_id,
           score: parseInt(newAssessment.score.toString())
         })
       });
       if (res.ok) {
         setIsAddingAssessment(false);
-        setNewAssessment({ student_id: '', subject: 'Matematika', score: 80, notes: '' });
+        setNewAssessment({ group_id: '', subject: 'Matematika', score: 80, notes: '' });
         fetchData();
       }
     } catch (error) {
@@ -138,25 +162,95 @@ export default function App() {
     }
   };
 
-  const handleAddStudent = async (e: React.FormEvent) => {
+  const handleAddGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/students', {
+      const res = await fetch('/api/groups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newStudent)
+        body: JSON.stringify(newGroup)
       });
       if (res.ok) {
-        setIsAddingStudent(false);
-        setNewStudent({ name: '', class: 'XII-A' });
+        setIsAddingGroup(false);
+        setNewGroup({ name: '', category: 'Kategori A' });
         fetchData();
       }
     } catch (error) {
-      console.error("Error adding student:", error);
+      console.error("Error adding group:", error);
     }
   };
 
   const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-md bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden"
+        >
+          <div className="p-8">
+            <div className="w-16 h-16 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+              <Lock size={32} />
+            </div>
+            <h2 className="text-2xl font-bold text-slate-900 text-center mb-2">Admin Login</h2>
+            <p className="text-slate-500 text-center mb-8">Masukkan kredensial untuk mengakses dashboard</p>
+
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Username</label>
+                <div className="relative">
+                  <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input 
+                    type="text" 
+                    required
+                    placeholder="Username"
+                    value={loginForm.username}
+                    onChange={(e) => setLoginForm({...loginForm, username: e.target.value})}
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Password</label>
+                <div className="relative">
+                  <Key className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <input 
+                    type="password" 
+                    required
+                    placeholder="Password"
+                    value={loginForm.password}
+                    onChange={(e) => setLoginForm({...loginForm, password: e.target.value})}
+                    className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                  />
+                </div>
+              </div>
+
+              {loginError && (
+                <motion.div 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="p-4 bg-amber-50 text-amber-700 rounded-xl text-xs font-bold flex items-center gap-2"
+                >
+                  <AlertCircle size={14} />
+                  {loginError}
+                </motion.div>
+              )}
+
+              <button 
+                type="submit"
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-slate-900/20 active:scale-95 flex items-center justify-center gap-2"
+              >
+                Masuk ke Dashboard
+              </button>
+            </form>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex bg-slate-50">
@@ -188,16 +282,16 @@ export default function App() {
             <span>Overview</span>
           </button>
           <button 
-            onClick={() => setActiveTab('students')}
+            onClick={() => setActiveTab('groups')}
             className={cn(
               "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
-              activeTab === 'students' 
+              activeTab === 'groups' 
                 ? "bg-brand-50 text-brand-700 font-semibold" 
                 : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
             )}
           >
             <Users size={20} />
-            <span>Data Siswa</span>
+            <span>Data Kelompok</span>
           </button>
           <button 
             onClick={() => setActiveTab('assessments')}
@@ -228,6 +322,15 @@ export default function App() {
             </div>
           </div>
         </div>
+        <div className="p-4 border-t border-slate-100">
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-amber-50 hover:text-amber-700 transition-all duration-200"
+          >
+            <LogOut size={20} />
+            <span>Keluar</span>
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -253,7 +356,7 @@ export default function App() {
               />
             </div>
             <button 
-              onClick={() => activeTab === 'students' ? setIsAddingStudent(true) : setIsAddingAssessment(true)}
+              onClick={() => activeTab === 'groups' ? setIsAddingGroup(true) : setIsAddingAssessment(true)}
               className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-semibold transition-all shadow-lg shadow-brand-600/20 active:scale-95"
             >
               <PlusCircle size={18} />
@@ -290,8 +393,8 @@ export default function App() {
                         </div>
                         <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">+2 Baru</span>
                       </div>
-                      <p className="text-slate-500 text-sm font-medium">Total Siswa</p>
-                      <h3 className="text-3xl font-bold text-slate-900 mt-1">{summary?.stats?.totalStudents || 0}</h3>
+                      <p className="text-slate-500 text-sm font-medium">Total Kelompok</p>
+                      <h3 className="text-3xl font-bold text-slate-900 mt-1">{summary?.stats?.totalGroups || 0}</h3>
                     </div>
 
                     <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
@@ -358,7 +461,7 @@ export default function App() {
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={Array.isArray(assessments) ? assessments.slice(0, 10).reverse() : []}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="studentName" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} dy={10} />
+                            <XAxis dataKey="groupName" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10 }} dy={10} />
                             <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 12 }} />
                             <Tooltip 
                               contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
@@ -392,7 +495,7 @@ export default function App() {
                       <table className="w-full text-left">
                         <thead>
                           <tr className="bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
-                            <th className="px-6 py-4">Siswa</th>
+                            <th className="px-6 py-4">Kelompok</th>
                             <th className="px-6 py-4">Mata Pelajaran</th>
                             <th className="px-6 py-4">Nilai</th>
                             <th className="px-6 py-4">Tanggal</th>
@@ -405,11 +508,11 @@ export default function App() {
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs">
-                                    {a.studentName.charAt(0)}
+                                    {a.groupName.charAt(0)}
                                   </div>
                                   <div>
-                                    <p className="text-sm font-bold text-slate-900">{a.studentName}</p>
-                                    <p className="text-xs text-slate-500">{a.studentClass}</p>
+                                    <p className="text-sm font-bold text-slate-900">{a.groupName}</p>
+                                    <p className="text-xs text-slate-500">{a.groupCategory}</p>
                                   </div>
                                 </div>
                               </td>
@@ -445,9 +548,9 @@ export default function App() {
                 </motion.div>
               )}
 
-              {activeTab === 'students' && (
+              {activeTab === 'groups' && (
                 <motion.div 
-                  key="students"
+                  key="groups"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
@@ -459,7 +562,7 @@ export default function App() {
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                         <input 
                           type="text" 
-                          placeholder="Cari siswa..." 
+                          placeholder="Cari kelompok..." 
                           className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all w-full sm:w-64"
                         />
                       </div>
@@ -467,9 +570,12 @@ export default function App() {
                         <Filter size={20} />
                       </button>
                     </div>
-                    <button className="flex items-center gap-2 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors">
-                      <Download size={18} />
-                      Export Data
+                    <button 
+                      onClick={() => setIsAddingGroup(true)}
+                      className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-brand-200"
+                    >
+                      <UserPlus size={20} />
+                      Tambah Kelompok
                     </button>
                   </div>
 
@@ -478,48 +584,48 @@ export default function App() {
                       <thead>
                         <tr className="bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
                           <th className="px-6 py-4">ID</th>
-                          <th className="px-6 py-4">Nama Lengkap</th>
-                          <th className="px-6 py-4">Kelas</th>
+                          <th className="px-6 py-4">Nama Kelompok</th>
+                          <th className="px-6 py-4">Kategori</th>
                           <th className="px-6 py-4">Rata-rata Nilai</th>
-                          <th className="px-6 py-4">Status Akademik</th>
+                          <th className="px-6 py-4">Status Performa</th>
                           <th className="px-6 py-4">Aksi</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {(Array.isArray(students) ? students : []).map((s) => (
-                          <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
-                            <td className="px-6 py-4 text-sm font-mono text-slate-400">#{s.id.toString().padStart(3, '0')}</td>
+                        {(Array.isArray(groups) ? groups : []).map((g) => (
+                          <tr key={g.id} className="hover:bg-slate-50/50 transition-colors group">
+                            <td className="px-6 py-4 text-sm font-mono text-slate-400">#{g.id.toString().slice(-4)}</td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-700 font-bold text-sm">
-                                  {s.name.charAt(0)}
+                                  {g.name.charAt(0)}
                                 </div>
-                                <span className="text-sm font-bold text-slate-900">{s.name}</span>
+                                <span className="text-sm font-bold text-slate-900">{g.name}</span>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-sm text-slate-600 font-medium">{s.class}</td>
+                            <td className="px-6 py-4 text-sm text-slate-600 font-medium">{g.category}</td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
                                 <div className="flex-1 h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden">
                                   <div 
                                     className={cn(
                                       "h-full rounded-full transition-all duration-1000",
-                                      (s.avgScore || 0) >= 75 ? "bg-emerald-500" : "bg-amber-500"
+                                      (g.avgScore || 0) >= 75 ? "bg-emerald-500" : "bg-amber-500"
                                     )}
-                                    style={{ width: `${s.avgScore || 0}%` }}
+                                    style={{ width: `${g.avgScore || 0}%` }}
                                   />
                                 </div>
                                 <span className="text-sm font-bold text-slate-700">
-                                  {s.avgScore ? s.avgScore.toFixed(1) : 'N/A'}
+                                  {g.avgScore ? g.avgScore.toFixed(1) : 'N/A'}
                                 </span>
                               </div>
                             </td>
                             <td className="px-6 py-4">
                               <span className={cn(
                                 "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider",
-                                (s.avgScore || 0) >= 75 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                                (g.avgScore || 0) >= 75 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
                               )}>
-                                {(s.avgScore || 0) >= 75 ? 'Sangat Baik' : 'Perlu Bimbingan'}
+                                {(g.avgScore || 0) >= 75 ? 'Sangat Baik' : 'Perlu Bimbingan'}
                               </span>
                             </td>
                             <td className="px-6 py-4">
@@ -562,7 +668,7 @@ export default function App() {
                     <table className="w-full text-left">
                       <thead>
                         <tr className="bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
-                          <th className="px-6 py-4">Siswa</th>
+                          <th className="px-6 py-4">Kelompok</th>
                           <th className="px-6 py-4">Mata Pelajaran</th>
                           <th className="px-6 py-4">Nilai</th>
                           <th className="px-6 py-4">Keterangan</th>
@@ -574,8 +680,8 @@ export default function App() {
                           <tr key={a.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="px-6 py-4">
                               <div>
-                                <p className="text-sm font-bold text-slate-900">{a.studentName}</p>
-                                <p className="text-xs text-slate-500">{a.studentClass}</p>
+                                <p className="text-sm font-bold text-slate-900">{a.groupName}</p>
+                                <p className="text-xs text-slate-500">{a.groupCategory}</p>
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -644,16 +750,16 @@ export default function App() {
 
                 <form onSubmit={handleAddAssessment} className="space-y-6">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pilih Siswa</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pilih Kelompok</label>
                     <select 
                       required
-                      value={newAssessment.student_id}
-                      onChange={(e) => setNewAssessment({...newAssessment, student_id: e.target.value})}
+                      value={newAssessment.group_id}
+                      onChange={(e) => setNewAssessment({...newAssessment, group_id: e.target.value})}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
                     >
-                      <option value="">Pilih Siswa...</option>
-                      {(Array.isArray(students) ? students : []).map(s => (
-                        <option key={s.id} value={s.id}>{s.name} ({s.class})</option>
+                      <option value="">Pilih Kelompok...</option>
+                      {(Array.isArray(groups) ? groups : []).map(g => (
+                        <option key={g.id} value={g.id}>{g.name} ({g.category})</option>
                       ))}
                     </select>
                   </div>
@@ -709,13 +815,13 @@ export default function App() {
           </div>
         )}
 
-        {isAddingStudent && (
+        {isAddingGroup && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setIsAddingStudent(false)}
+              onClick={() => setIsAddingGroup(false)}
               className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div 
@@ -726,39 +832,39 @@ export default function App() {
             >
               <div className="p-8">
                 <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-xl font-bold text-slate-900">Tambah Siswa Baru</h3>
+                  <h3 className="text-xl font-bold text-slate-900">Tambah Kelompok Baru</h3>
                   <button 
-                    onClick={() => setIsAddingStudent(false)}
+                    onClick={() => setIsAddingGroup(false)}
                     className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
                   >
                     <PlusCircle className="rotate-45" size={24} />
                   </button>
                 </div>
 
-                <form onSubmit={handleAddStudent} className="space-y-6">
+                <form onSubmit={handleAddGroup} className="space-y-6">
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nama Lengkap</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nama Kelompok</label>
                     <input 
                       type="text" 
                       required
-                      placeholder="Masukkan nama lengkap..."
-                      value={newStudent.name}
-                      onChange={(e) => setNewStudent({...newStudent, name: e.target.value})}
+                      placeholder="Masukkan nama kelompok..."
+                      value={newGroup.name}
+                      onChange={(e) => setNewGroup({...newGroup, name: e.target.value})}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Kelas</label>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Kategori</label>
                     <select 
-                      value={newStudent.class}
-                      onChange={(e) => setNewStudent({...newStudent, class: e.target.value})}
+                      value={newGroup.category}
+                      onChange={(e) => setNewGroup({...newGroup, category: e.target.value})}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
                     >
-                      <option>XII-A</option>
-                      <option>XII-B</option>
-                      <option>XI-A</option>
-                      <option>XI-B</option>
+                      <option>Kategori A</option>
+                      <option>Kategori B</option>
+                      <option>Kategori C</option>
+                      <option>Kategori D</option>
                     </select>
                   </div>
 
@@ -766,7 +872,7 @@ export default function App() {
                     type="submit"
                     className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-slate-900/20 active:scale-95 mt-4"
                   >
-                    Daftarkan Siswa
+                    Daftarkan Kelompok
                   </button>
                 </form>
               </div>

@@ -1,5 +1,5 @@
 {
-  "name": "Sistem Penilaian Dashboard",
-  "description": "Dashboard penilaian siswa dengan integrasi database SQLite untuk manajemen nilai dan statistik.",
+  "name": "Sistem Penilaian Kelompok",
+  "description": "Dashboard penilaian kelompok dengan integrasi Firebase untuk manajemen nilai tim dan statistik performa kelompok.",
   "requestFramePermissions": []
 }

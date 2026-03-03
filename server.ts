@@ -38,10 +38,10 @@ app.get("/api/summary", async (req, res) => {
   if (!db) return res.status(500).json({ error: "Database not initialized" });
   try {
     const assessmentsSnapshot = await db.collection("assessments").get();
-    const studentsSnapshot = await db.collection("students").get();
+    const groupsSnapshot = await db.collection("groups").get();
     
     const assessments = assessmentsSnapshot.docs.map(doc => doc.data());
-    const totalStudents = studentsSnapshot.size;
+    const totalGroups = groupsSnapshot.size;
     const totalAssessments = assessmentsSnapshot.size;
     
     let totalScore = 0;
@@ -63,7 +63,7 @@ app.get("/api/summary", async (req, res) => {
     }));
 
     res.json({ 
-      stats: { totalStudents, averageScore, totalAssessments }, 
+      stats: { totalGroups, averageScore, totalAssessments }, 
       subjectStats 
     });
   } catch (error) {
@@ -71,27 +71,27 @@ app.get("/api/summary", async (req, res) => {
   }
 });
 
-app.get("/api/students", async (req, res) => {
+app.get("/api/groups", async (req, res) => {
   if (!db) return res.status(500).json({ error: "Database not initialized" });
   try {
-    const studentsSnapshot = await db.collection("students").get();
+    const groupsSnapshot = await db.collection("groups").get();
     const assessmentsSnapshot = await db.collection("assessments").get();
     
     const assessments = assessmentsSnapshot.docs.map(doc => doc.data());
     
-    const students = studentsSnapshot.docs.map(doc => {
+    const groups = groupsSnapshot.docs.map(doc => {
       const data = doc.data();
-      const studentAssessments = assessments.filter(a => a.student_id === doc.id);
-      const avgScore = studentAssessments.length > 0 
-        ? studentAssessments.reduce((sum, a) => sum + Number(a.score), 0) / studentAssessments.length 
+      const groupAssessments = assessments.filter(a => a.group_id === doc.id);
+      const avgScore = groupAssessments.length > 0 
+        ? groupAssessments.reduce((sum, a) => sum + Number(a.score), 0) / groupAssessments.length 
         : null;
       
       return { id: doc.id, ...data, avgScore };
     });
     
-    res.json(students);
+    res.json(groups);
   } catch (error) {
-    res.status(500).json({ error: "Failed to fetch students" });
+    res.status(500).json({ error: "Failed to fetch groups" });
   }
 });
 
@@ -99,21 +99,21 @@ app.get("/api/assessments", async (req, res) => {
   if (!db) return res.status(500).json({ error: "Database not initialized" });
   try {
     const assessmentsSnapshot = await db.collection("assessments").orderBy("date", "desc").get();
-    const studentsSnapshot = await db.collection("students").get();
+    const groupsSnapshot = await db.collection("groups").get();
     
-    const studentsMap: Record<string, any> = {};
-    studentsSnapshot.docs.forEach(doc => {
-      studentsMap[doc.id] = doc.data();
+    const groupsMap: Record<string, any> = {};
+    groupsSnapshot.docs.forEach(doc => {
+      groupsMap[doc.id] = doc.data();
     });
 
     const assessments = assessmentsSnapshot.docs.map(doc => {
       const data = doc.data();
-      const student = studentsMap[data.student_id] || {};
+      const group = groupsMap[data.group_id] || {};
       return { 
         id: doc.id, 
         ...data, 
-        studentName: student.name || "Unknown", 
-        studentClass: student.class || "N/A" 
+        groupName: group.name || "Unknown", 
+        groupCategory: group.category || "N/A" 
       };
     });
     
@@ -126,9 +126,9 @@ app.get("/api/assessments", async (req, res) => {
 app.post("/api/assessments", async (req, res) => {
   if (!db) return res.status(500).json({ error: "Database not initialized" });
   try {
-    const { student_id, subject, score, notes } = req.body;
+    const { group_id, subject, score, notes } = req.body;
     const docRef = await db.collection("assessments").add({
-      student_id,
+      group_id,
       subject,
       score: Number(score),
       notes,
@@ -140,17 +140,17 @@ app.post("/api/assessments", async (req, res) => {
   }
 });
 
-app.post("/api/students", async (req, res) => {
+app.post("/api/groups", async (req, res) => {
   if (!db) return res.status(500).json({ error: "Database not initialized" });
   try {
-    const { name, class: className } = req.body;
-    const docRef = await db.collection("students").add({
+    const { name, category } = req.body;
+    const docRef = await db.collection("groups").add({
       name,
-      class: className
+      category
     });
     res.json({ id: docRef.id });
   } catch (error) {
-    res.status(500).json({ error: "Failed to add student" });
+    res.status(500).json({ error: "Failed to add group" });
   }
 });
 
