@@ -57,6 +57,7 @@ interface Assessment {
   score: number;
   date: string;
   notes: string;
+  criteria?: Record<string, number>;
 }
 
 interface Summary {
@@ -68,6 +69,10 @@ interface Summary {
   subjectStats: {
     subject: string;
     avgScore: number;
+  }[];
+  fashionShowStats?: {
+    name: string;
+    avg: number;
   }[];
 }
 
@@ -86,11 +91,23 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   // Form states
-  const [newAssessment, setNewAssessment] = useState({
+  const [newAssessment, setNewAssessment] = useState<{
+    group_id: string;
+    subject: string;
+    score: number;
+    notes: string;
+    criteria: Record<string, number>;
+  }>({
     group_id: '',
     subject: 'Merpati Ekor Kata',
     score: 80,
-    notes: ''
+    notes: '',
+    criteria: {
+      'Kesesuaian dengan tema': 0,
+      'Kreativitas': 0,
+      'Kelengkapan Kelompok': 0,
+      'Ekspresi/Gaya': 0
+    }
   });
 
   const [newGroup, setNewGroup] = useState({
@@ -153,18 +170,39 @@ export default function App() {
   const handleAddAssessment = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      let finalScore = parseInt(newAssessment.score.toString());
+      let criteriaData = null;
+
+      if (newAssessment.subject === 'Fashion Show') {
+        const scores = Object.values(newAssessment.criteria) as number[];
+        const sum = scores.reduce((a, b) => a + b, 0);
+        finalScore = Math.round(sum / scores.length);
+        criteriaData = newAssessment.criteria;
+      }
+
       const res = await fetch('/api/assessments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...newAssessment,
-          group_id: newAssessment.group_id,
-          score: parseInt(newAssessment.score.toString())
+          score: finalScore,
+          criteria: criteriaData
         })
       });
       if (res.ok) {
         setIsAddingAssessment(false);
-        setNewAssessment({ group_id: '', subject: 'Merpati Ekor Kata', score: 80, notes: '' });
+        setNewAssessment({ 
+          group_id: '', 
+          subject: 'Merpati Ekor Kata', 
+          score: 80, 
+          notes: '',
+          criteria: {
+            'Kesesuaian dengan tema': 0,
+            'Kreativitas': 0,
+            'Kelengkapan Kelompok': 0,
+            'Ekspresi/Gaya': 0
+          }
+        });
         fetchData();
       }
     } catch (error) {
@@ -540,9 +578,67 @@ export default function App() {
                               strokeWidth={3} 
                               dot={{ r: 6, fill: '#16a34a', strokeWidth: 2, stroke: '#fff' }}
                               activeDot={{ r: 8, strokeWidth: 0 }}
+                              animationDuration={1000}
                             />
                           </LineChart>
                         </ResponsiveContainer>
+                      </div>
+                    </div>
+
+                    <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2">
+                      <div className="flex items-center justify-between mb-8">
+                        <div>
+                          <h4 className="font-bold text-slate-900">Analisis Kriteria Fashion Show</h4>
+                          <p className="text-xs text-slate-500 font-medium mt-1">Rata-rata poin dari seluruh penilaian Fashion Show</p>
+                        </div>
+                        <div className="p-2 bg-brand-50 text-brand-600 rounded-lg">
+                          <TrendingUp size={20} />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                        <div className="h-[250px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                              <Pie
+                                data={summary?.fashionShowStats || []}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={60}
+                                outerRadius={80}
+                                paddingAngle={8}
+                                dataKey="avg"
+                                animationBegin={0}
+                                animationDuration={1500}
+                              >
+                                {(summary?.fashionShowStats || []).map((entry, index) => (
+                                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                ))}
+                              </Pie>
+                              <Tooltip 
+                                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                              />
+                            </PieChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <div className="grid grid-cols-1 gap-4">
+                          {(summary?.fashionShowStats || []).map((s, i) => (
+                            <div key={s.name} className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center justify-between group hover:border-brand-200 transition-colors">
+                              <div className="flex items-center gap-3">
+                                <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                                <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">{s.name}</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-lg font-black text-slate-900">{s.avg.toFixed(1)}</span>
+                                <div className="w-12 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                  <div 
+                                    className="h-full bg-brand-500 transition-all duration-1000" 
+                                    style={{ width: `${s.avg}%`, backgroundColor: COLORS[i % COLORS.length] }} 
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -583,7 +679,18 @@ export default function App() {
                                 </div>
                               </td>
                               <td className="px-6 py-4">
-                                <span className="text-sm text-slate-600 font-medium">{a.subject}</span>
+                                <div className="flex flex-col">
+                                  <span className="text-sm text-slate-600 font-medium">{a.subject}</span>
+                                  {a.criteria && (
+                                    <div className="flex gap-2 mt-0.5">
+                                      {Object.entries(a.criteria).map(([key, val]) => (
+                                        <span key={key} className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
+                                          {key.split(' ').map(w => w[0]).join('')}: {val}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
                               </td>
                               <td className="px-6 py-4">
                                 <span className={cn(
@@ -764,9 +871,20 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-6 py-4">
-                              <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-brand-500" />
-                                <span className="text-sm text-slate-600 font-medium">{a.subject}</span>
+                              <div className="flex flex-col gap-1">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-brand-500" />
+                                  <span className="text-sm text-slate-600 font-medium">{a.subject}</span>
+                                </div>
+                                {a.criteria && (
+                                  <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
+                                    {Object.entries(a.criteria).map(([key, val]) => (
+                                      <span key={key} className="text-[10px] text-slate-400">
+                                        <span className="font-semibold">{key.split(' ').map(w => w[0]).join('')}:</span> {val}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -843,7 +961,7 @@ export default function App() {
                     </select>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Perlombaan</label>
                       <select 
@@ -855,19 +973,55 @@ export default function App() {
                         <option>Fashion Show</option>
                       </select>
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nilai (0-100)</label>
-                      <input 
-                        type="number" 
-                        min="0" 
-                        max="100"
-                        required
-                        value={newAssessment.score}
-                        onChange={(e) => setNewAssessment({...newAssessment, score: parseInt(e.target.value)})}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
-                      />
-                    </div>
+                    {newAssessment.subject !== 'Fashion Show' && (
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nilai (0-100)</label>
+                        <input 
+                          type="number" 
+                          min="0" 
+                          max="100"
+                          required
+                          value={newAssessment.score}
+                          onChange={(e) => setNewAssessment({...newAssessment, score: parseInt(e.target.value)})}
+                          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all font-bold"
+                        />
+                      </div>
+                    )}
                   </div>
+
+                  {newAssessment.subject === 'Fashion Show' && (
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
+                      <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Kriteria Penilaian Fashion Show</h5>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {Object.keys(newAssessment.criteria).map((criterion) => (
+                          <div key={criterion}>
+                            <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1.5">{criterion}</label>
+                            <input 
+                              type="number"
+                              min="0"
+                              max="100"
+                              required
+                              value={newAssessment.criteria[criterion as keyof typeof newAssessment.criteria]}
+                              onChange={(e) => setNewAssessment({
+                                ...newAssessment,
+                                criteria: {
+                                  ...newAssessment.criteria,
+                                  [criterion]: parseInt(e.target.value) || 0
+                                }
+                              })}
+                              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-brand-500/20 focus:border-brand-500 outline-none transition-all"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                      <div className="pt-4 border-top border-slate-200 flex justify-between items-center">
+                        <span className="text-xs font-bold text-slate-500">Rata-rata Nilai:</span>
+                        <span className="text-lg font-black text-brand-600">
+                          {Math.round((Object.values(newAssessment.criteria) as number[]).reduce((a, b) => a + b, 0) / 4)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Catatan / Keterangan</label>

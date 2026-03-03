@@ -78,6 +78,31 @@ app.get("/api/summary", async (req, res) => {
     });
 
     const averageScore = totalAssessments > 0 ? totalScore / totalAssessments : 0;
+    
+    // Calculate criteria averages for Fashion Show
+    const fashionShowCriteria: Record<string, { total: number; count: number }> = {
+      'Kesesuaian dengan tema': { total: 0, count: 0 },
+      'Kreativitas': { total: 0, count: 0 },
+      'Kelengkapan Kelompok': { total: 0, count: 0 },
+      'Ekspresi/Gaya': { total: 0, count: 0 }
+    };
+
+    assessments.forEach(a => {
+      if (a.subject === 'Fashion Show' && a.criteria) {
+        Object.entries(a.criteria).forEach(([key, val]) => {
+          if (fashionShowCriteria[key]) {
+            fashionShowCriteria[key].total += Number(val);
+            fashionShowCriteria[key].count += 1;
+          }
+        });
+      }
+    });
+
+    const fashionShowStats = Object.entries(fashionShowCriteria).map(([name, data]) => ({
+      name,
+      avg: data.count > 0 ? data.total / data.count : 0
+    }));
+
     const subjectStats = Object.entries(subjectScores).map(([subject, data]) => ({
       subject,
       avgScore: data.total / data.count
@@ -85,7 +110,8 @@ app.get("/api/summary", async (req, res) => {
 
     res.json({ 
       stats: { totalGroups, averageScore, totalAssessments }, 
-      subjectStats 
+      subjectStats,
+      fashionShowStats
     });
   } catch (error: any) {
     console.error("Summary error:", error);
@@ -168,12 +194,13 @@ app.post("/api/assessments", async (req, res) => {
     details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
   });
   try {
-    const { group_id, subject, score, notes } = req.body;
+    const { group_id, subject, score, notes, criteria } = req.body;
     const docRef = await db.collection("assessments").add({
       group_id,
       subject,
       score: Number(score),
       notes,
+      criteria: criteria || null,
       date: new Date().toISOString()
     });
     res.json({ id: docRef.id });
