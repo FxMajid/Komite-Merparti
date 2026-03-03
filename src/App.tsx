@@ -18,7 +18,8 @@ import {
   AlertCircle,
   Lock,
   Key,
-  LogOut
+  LogOut,
+  Trash2
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -43,17 +44,15 @@ function cn(...inputs: ClassValue[]) {
 }
 
 interface Group {
-  id: number;
+  id: string;
   name: string;
-  category: string;
   avgScore: number | null;
 }
 
 interface Assessment {
-  id: number;
-  group_id: number;
+  id: string;
+  group_id: string;
   groupName: string;
-  groupCategory: string;
   subject: string;
   score: number;
   date: string;
@@ -95,8 +94,7 @@ export default function App() {
   });
 
   const [newGroup, setNewGroup] = useState({
-    name: '',
-    category: 'Kategori A'
+    name: ''
   });
 
   const handleLogin = (e: React.FormEvent) => {
@@ -184,11 +182,34 @@ export default function App() {
       });
       if (res.ok) {
         setIsAddingGroup(false);
-        setNewGroup({ name: '', category: 'Kategori A' });
+        setNewGroup({ name: '' });
         fetchData();
       }
     } catch (error) {
       console.error("Error adding group:", error);
+    }
+  };
+
+  const handleDeleteGroup = async (id: string) => {
+    alert(`Mencoba menghapus kelompok ID: ${id}`);
+    console.log("Attempting to delete group with ID:", id);
+    if (window.confirm('Apakah Anda yakin ingin menghapus kelompok ini? Semua data penilaian terkait juga akan dihapus.')) {
+      try {
+        const res = await fetch(`/api/groups/${id}`, {
+          method: 'DELETE'
+        });
+        if (res.ok) {
+          console.log("Group deleted successfully:", id);
+          fetchData();
+        } else {
+          const errorData = await res.json().catch(() => ({}));
+          console.error("Failed to delete group:", errorData);
+          alert(`Gagal menghapus kelompok: ${errorData.message || 'Error tidak diketahui'}`);
+        }
+      } catch (error) {
+        console.error("Error deleting group:", error);
+        alert("Terjadi kesalahan saat menghapus kelompok.");
+      }
     }
   };
 
@@ -559,7 +580,6 @@ export default function App() {
                                   </div>
                                   <div>
                                     <p className="text-sm font-bold text-slate-900">{a.groupName}</p>
-                                    <p className="text-xs text-slate-500">{a.groupCategory}</p>
                                   </div>
                                 </div>
                               </td>
@@ -632,7 +652,6 @@ export default function App() {
                         <tr className="bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
                           <th className="px-6 py-4">ID</th>
                           <th className="px-6 py-4">Nama Kelompok</th>
-                          <th className="px-6 py-4">Kategori</th>
                           <th className="px-6 py-4">Rata-rata Nilai</th>
                           <th className="px-6 py-4">Status Performa</th>
                           <th className="px-6 py-4">Aksi</th>
@@ -650,7 +669,6 @@ export default function App() {
                                 <span className="text-sm font-bold text-slate-900">{g.name}</span>
                               </div>
                             </td>
-                            <td className="px-6 py-4 text-sm text-slate-600 font-medium">{g.category}</td>
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
                                 <div className="flex-1 h-1.5 w-24 bg-slate-100 rounded-full overflow-hidden">
@@ -676,9 +694,25 @@ export default function App() {
                               </span>
                             </td>
                             <td className="px-6 py-4">
-                              <button className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all">
-                                <MoreVertical size={18} />
-                              </button>
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteGroup(g.id);
+                                  }}
+                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer z-30"
+                                  title="Hapus Kelompok"
+                                >
+                                  <Trash2 size={18} />
+                                </button>
+                                <button 
+                                  type="button"
+                                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
+                                >
+                                  <MoreVertical size={18} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -728,7 +762,6 @@ export default function App() {
                             <td className="px-6 py-4">
                               <div>
                                 <p className="text-sm font-bold text-slate-900">{a.groupName}</p>
-                                <p className="text-xs text-slate-500">{a.groupCategory}</p>
                               </div>
                             </td>
                             <td className="px-6 py-4">
@@ -806,7 +839,7 @@ export default function App() {
                     >
                       <option value="">Pilih Kelompok...</option>
                       {(Array.isArray(groups) ? groups : []).map(g => (
-                        <option key={g.id} value={g.id}>{g.name} ({g.category})</option>
+                        <option key={g.id} value={g.id}>{g.name}</option>
                       ))}
                     </select>
                   </div>
@@ -899,20 +932,6 @@ export default function App() {
                       onChange={(e) => setNewGroup({...newGroup, name: e.target.value})}
                       className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
                     />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Kategori</label>
-                    <select 
-                      value={newGroup.category}
-                      onChange={(e) => setNewGroup({...newGroup, category: e.target.value})}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
-                    >
-                      <option>Kategori A</option>
-                      <option>Kategori B</option>
-                      <option>Kategori C</option>
-                      <option>Kategori D</option>
-                    </select>
                   </div>
 
                   <button 

@@ -148,8 +148,7 @@ app.get("/api/assessments", async (req, res) => {
       return { 
         id: doc.id, 
         ...data, 
-        groupName: group.name || "Unknown", 
-        groupCategory: group.category || "N/A" 
+        groupName: group.name || "Unknown"
       };
     });
     
@@ -193,10 +192,9 @@ app.post("/api/groups", async (req, res) => {
     details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
   });
   try {
-    const { name, category } = req.body;
+    const { name } = req.body;
     const docRef = await db.collection("groups").add({
-      name,
-      category
+      name
     });
     res.json({ id: docRef.id });
   } catch (error: any) {
@@ -205,6 +203,39 @@ app.post("/api/groups", async (req, res) => {
       error: "Failed to add group", 
       message: error.message 
     });
+  }
+});
+
+app.delete("/api/groups/:id", async (req, res) => {
+  console.log("DELETE request for group ID:", req.params.id);
+  if (!db) {
+    console.error("Database not initialized during DELETE");
+    return res.status(500).json({ error: "Database not initialized" });
+  }
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: "Group ID is required" });
+    }
+    
+    await db.collection("groups").doc(id).delete();
+    console.log("Group deleted from Firestore:", id);
+    
+    // Also delete assessments associated with this group
+    const assessmentsSnapshot = await db.collection("assessments").where("group_id", "==", id).get();
+    console.log(`Found ${assessmentsSnapshot.size} assessments to delete for group ${id}`);
+    
+    const batch = db.batch();
+    assessmentsSnapshot.docs.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+    await batch.commit();
+    console.log("Assessments batch delete completed");
+    
+    res.json({ message: "Group and associated assessments deleted" });
+  } catch (error: any) {
+    console.error("Failed to delete group:", error);
+    res.status(500).json({ error: "Failed to delete group", message: error.message });
   }
 });
 
@@ -223,8 +254,7 @@ async function seedGroups() {
     for (const name of groupsToSeed) {
       if (!existingNames.includes(name)) {
         await db.collection("groups").add({
-          name,
-          category: "Kategori A"
+          name
         });
         console.log(`Seeded group: ${name}`);
       }
