@@ -634,7 +634,7 @@ export default function AdminDashboard() {
                                     <div className="flex gap-2 mt-0.5">
                                       {Object.entries(a.criteria).map(([key, val]) => (
                                         <span key={key} className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
-                                          {key.split(' ').map(w => w[0]).join('')}: {val}
+                                          {key}: {val}
                                         </span>
                                       ))}
                                     </div>
@@ -839,7 +839,7 @@ export default function AdminDashboard() {
                                   <div className="flex flex-wrap gap-x-3 gap-y-1 mt-1">
                                     {Object.entries(a.criteria).map(([key, val]) => (
                                       <span key={key} className="text-[10px] text-slate-400">
-                                        <span className="font-semibold">{key.split(' ').map(w => w[0]).join('')}:</span> {val}
+                                        <span className="font-semibold">{key}:</span> {val}
                                       </span>
                                     ))}
                                   </div>

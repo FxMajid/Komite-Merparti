@@ -106,12 +106,6 @@ export default function JudgeView() {
           </div>
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Penilaian Terkirim!</h2>
           <p className="text-slate-500 mb-8">Terima kasih atas penilaian Anda untuk Fashion Show ini.</p>
-          <button 
-            onClick={() => setSuccess(false)}
-            className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition-colors"
-          >
-            Nilai Kelompok Lain
-          </button>
         </motion.div>
       </div>
     );
