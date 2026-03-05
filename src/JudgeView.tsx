@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, AlertCircle, Send, User, Users, Star, Trophy } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Send, User, Users, Star, Trophy, UserCircle2 } from 'lucide-react';
 
 interface Group {
   id: string;
@@ -8,8 +9,10 @@ interface Group {
 }
 
 export default function JudgeView() {
+  const [searchParams] = useSearchParams();
   const [judgeName, setJudgeName] = useState('');
-  const [selectedGroup, setSelectedGroup] = useState('');
+  const [role, setRole] = useState<'Juri' | 'Peserta'>('Juri');
+  const [selectedGroup, setSelectedGroup] = useState(searchParams.get('group_id') || '');
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -68,8 +71,9 @@ export default function JudgeView() {
           group_id: selectedGroup,
           subject: 'Fashion Show',
           score: finalScore,
-          notes: `Dinilai oleh Juri: ${judgeName}`,
-          criteria: criteria
+          notes: `Dinilai oleh ${role}: ${judgeName}`,
+          criteria: criteria,
+          role: role
         })
       });
 
@@ -106,6 +110,12 @@ export default function JudgeView() {
           </div>
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Penilaian Terkirim!</h2>
           <p className="text-slate-500 mb-8">Terima kasih atas penilaian Anda untuk Fashion Show ini.</p>
+          <button 
+            onClick={() => setSuccess(false)}
+            className="text-brand-600 font-bold hover:underline"
+          >
+            Kirim Penilaian Lain
+          </button>
         </motion.div>
       </div>
     );
@@ -123,7 +133,7 @@ export default function JudgeView() {
             <div className="p-2 bg-white/10 rounded-xl">
               <Trophy size={24} />
             </div>
-            <h1 className="text-xl font-bold">Juri Fashion Show</h1>
+            <h1 className="text-xl font-bold">Penilaian Fashion Show</h1>
           </div>
           <p className="text-slate-400 text-sm">Silakan berikan penilaian objektif untuk setiap kelompok.</p>
         </div>
@@ -136,14 +146,44 @@ export default function JudgeView() {
             </div>
           )}
 
+          {/* Role Selection */}
+          <div className="bg-slate-50 p-1 rounded-xl flex">
+            <button
+              type="button"
+              onClick={() => setRole('Juri')}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                role === 'Juri' 
+                  ? 'bg-white text-slate-900 shadow-sm' 
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <UserCircle2 size={16} />
+              Juri
+            </button>
+            <button
+              type="button"
+              onClick={() => setRole('Peserta')}
+              className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                role === 'Peserta' 
+                  ? 'bg-white text-slate-900 shadow-sm' 
+                  : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Users size={16} />
+              Peserta
+            </button>
+          </div>
+
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nama Juri</label>
+            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+              Nama {role}
+            </label>
             <div className="relative">
               <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
               <input 
                 type="text" 
                 required
-                placeholder="Masukkan nama Anda..."
+                placeholder={`Masukkan nama ${role}...`}
                 value={judgeName}
                 onChange={(e) => setJudgeName(e.target.value)}
                 className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"

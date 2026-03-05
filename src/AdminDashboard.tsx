@@ -61,6 +61,7 @@ interface Assessment {
   date: string;
   notes: string;
   criteria?: Record<string, number>;
+  role?: 'Juri' | 'Peserta';
 }
 
 interface Summary {
@@ -84,7 +85,7 @@ export default function AdminDashboard() {
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'assessments'>('overview');
-  const [showQR, setShowQR] = useState(false);
+  const [qrData, setQrData] = useState<{url: string, title: string, desc: string} | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -429,7 +430,11 @@ export default function AdminDashboard() {
 
           <div className="pt-4 mt-4 border-t border-slate-100">
             <button 
-              onClick={() => setShowQR(true)}
+              onClick={() => setQrData({
+                url: `${window.location.origin}/judge/fashion-show`,
+                title: 'Scan untuk Menilai',
+                desc: 'Tunjukkan QR Code ini kepada Juri Fashion Show untuk memberikan penilaian.'
+              })}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200"
             >
               <QrCode size={20} />
@@ -610,6 +615,7 @@ export default function AdminDashboard() {
                             <th className="px-6 py-4">Kelompok</th>
                             <th className="px-6 py-4">Perlombaan</th>
                             <th className="px-6 py-4">Nilai</th>
+                            <th className="px-6 py-4">Penilai</th>
                             <th className="px-6 py-4">Tanggal</th>
                             <th className="px-6 py-4 text-right">Aksi</th>
                           </tr>
@@ -647,6 +653,14 @@ export default function AdminDashboard() {
                                   a.score >= 75 ? "text-emerald-600" : "text-amber-600"
                                 )}>
                                   {a.score}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <span className={cn(
+                                  "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider",
+                                  a.role === 'Peserta' ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"
+                                )}>
+                                  {a.role || 'Juri'}
                                 </span>
                               </td>
                               <td className="px-6 py-4 text-sm text-slate-500">
@@ -763,6 +777,21 @@ export default function AdminDashboard() {
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
+                                    setQrData({
+                                      url: `${window.location.origin}/judge/fashion-show?group_id=${g.id}`,
+                                      title: `Scan untuk Menilai ${g.name}`,
+                                      desc: `Scan QR Code ini untuk langsung menilai kelompok ${g.name}.`
+                                    });
+                                  }}
+                                  className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-all cursor-pointer z-30"
+                                  title="QR Code Kelompok"
+                                >
+                                  <QrCode size={18} />
+                                </button>
+                                <button 
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     handleDeleteGroup(g.id);
                                   }}
                                   className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer z-30"
@@ -816,6 +845,7 @@ export default function AdminDashboard() {
                           <th className="px-6 py-4">Kelompok</th>
                           <th className="px-6 py-4">Perlombaan</th>
                           <th className="px-6 py-4">Nilai</th>
+                          <th className="px-6 py-4">Penilai</th>
                           <th className="px-6 py-4">Keterangan</th>
                           <th className="px-6 py-4">Tanggal Input</th>
                           <th className="px-6 py-4 text-right">Aksi</th>
@@ -855,6 +885,14 @@ export default function AdminDashboard() {
                                   {a.score}
                                 </span>
                               </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <span className={cn(
+                                "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider",
+                                a.role === 'Peserta' ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"
+                              )}>
+                                {a.role || 'Juri'}
+                              </span>
                             </td>
                             <td className="px-6 py-4">
                               <p className="text-sm text-slate-500 italic max-w-xs truncate">
@@ -1192,13 +1230,13 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {showQR && (
+        {qrData && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setShowQR(false)}
+              onClick={() => setQrData(null)}
               className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
             <motion.div 
@@ -1211,12 +1249,12 @@ export default function AdminDashboard() {
                 <div className="w-16 h-16 bg-brand-50 text-brand-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
                   <QrCode size={32} />
                 </div>
-                <h3 className="text-xl font-bold text-slate-900 mb-2">Scan untuk Menilai</h3>
-                <p className="text-slate-500 text-sm mb-8">Tunjukkan QR Code ini kepada Juri Fashion Show untuk memberikan penilaian.</p>
+                <h3 className="text-xl font-bold text-slate-900 mb-2">{qrData.title}</h3>
+                <p className="text-slate-500 text-sm mb-8">{qrData.desc}</p>
                 
                 <div className="bg-white p-4 rounded-2xl border-2 border-slate-100 inline-block mb-6">
                   <QRCode 
-                    value={`${window.location.origin}/judge/fashion-show`}
+                    value={qrData.url}
                     size={200}
                     style={{ height: "auto", maxWidth: "100%", width: "100%" }}
                     viewBox={`0 0 256 256`}
@@ -1224,7 +1262,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <button 
-                  onClick={() => setShowQR(false)}
+                  onClick={() => setQrData(null)}
                   className="w-full bg-slate-100 hover:bg-slate-200 text-slate-900 py-3 rounded-xl font-bold transition-colors"
                 >
                   Tutup

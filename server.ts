@@ -194,13 +194,14 @@ app.post("/api/assessments", async (req, res) => {
     details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
   });
   try {
-    const { group_id, subject, score, notes, criteria } = req.body;
+    const { group_id, subject, score, notes, criteria, role } = req.body;
     const docRef = await db.collection("assessments").add({
       group_id,
       subject,
       score: Number(score),
       notes,
       criteria: criteria || null,
+      role: role || 'Juri', // Default to Juri if not provided
       date: new Date().toISOString()
     });
     res.json({ id: docRef.id });
