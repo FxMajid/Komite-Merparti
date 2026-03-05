@@ -428,17 +428,28 @@ export default function AdminDashboard() {
             <span>Riwayat Nilai</span>
           </button>
 
-          <div className="pt-4 mt-4 border-t border-slate-100">
+          <div className="pt-4 mt-4 border-t border-slate-100 space-y-2">
             <button 
               onClick={() => setQrData({
-                url: `${window.location.origin}/judge/fashion-show`,
-                title: 'Scan untuk Menilai',
+                url: `${window.location.origin}/judge/fashion-show?role=Juri`,
+                title: 'Scan untuk Juri',
                 desc: 'Tunjukkan QR Code ini kepada Juri Fashion Show untuk memberikan penilaian.'
               })}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200"
             >
               <QrCode size={20} />
               <span>QR Code Juri</span>
+            </button>
+            <button 
+              onClick={() => setQrData({
+                url: `${window.location.origin}/judge/fashion-show?role=Peserta`,
+                title: 'Scan untuk Peserta',
+                desc: 'Tunjukkan QR Code ini kepada Peserta Fashion Show untuk memberikan penilaian.'
+              })}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200"
+            >
+              <Users size={20} />
+              <span>QR Code Peserta</span>
             </button>
           </div>
         </nav>

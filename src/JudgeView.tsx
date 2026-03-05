@@ -11,7 +11,11 @@ interface Group {
 export default function JudgeView() {
   const [searchParams] = useSearchParams();
   const [judgeName, setJudgeName] = useState('');
-  const [role, setRole] = useState<'Juri' | 'Peserta'>('Juri');
+  // Get role from URL, default to 'Juri' if not present or invalid
+  const roleParam = searchParams.get('role');
+  const [role, setRole] = useState<'Juri' | 'Peserta'>(
+    (roleParam === 'Peserta' || roleParam === 'Juri') ? roleParam : 'Juri'
+  );
   const [selectedGroup, setSelectedGroup] = useState(searchParams.get('group_id') || '');
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,33 +150,7 @@ export default function JudgeView() {
             </div>
           )}
 
-          {/* Role Selection */}
-          <div className="bg-slate-50 p-1 rounded-xl flex">
-            <button
-              type="button"
-              onClick={() => setRole('Juri')}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                role === 'Juri' 
-                  ? 'bg-white text-slate-900 shadow-sm' 
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <UserCircle2 size={16} />
-              Juri
-            </button>
-            <button
-              type="button"
-              onClick={() => setRole('Peserta')}
-              className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                role === 'Peserta' 
-                  ? 'bg-white text-slate-900 shadow-sm' 
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Users size={16} />
-              Peserta
-            </button>
-          </div>
+          {/* Role Selection Removed - Role is determined by URL parameter */}
 
           <div>
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
