@@ -16,23 +16,36 @@ export default function JudgeView() {
   const [role, setRole] = useState<'Juri' | 'Peserta'>(
     (roleParam === 'Peserta' || roleParam === 'Juri') ? roleParam : 'Juri'
   );
-  const [selectedGroup, setSelectedGroup] = useState(searchParams.get('group_id') || '');
+  
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
-  const [criteria, setCriteria] = useState<Record<string, number>>({
-    'Kesesuaian dengan tema': 0,
-    'Kreativitas': 0,
-    'Kelengkapan Kelompok': 0,
-    'Ekspresi/Gaya': 0
-  });
+  const [criteria, setCriteria] = useState<Record<string, Record<string, number>>>({});
 
   useEffect(() => {
     fetchGroups();
-  }, []);
+    const groupParam = searchParams.get('group_id');
+    if (groupParam) {
+      const ids = groupParam.split(',').filter(id => id.trim() !== '');
+      setSelectedGroupIds(ids);
+      
+      // Initialize criteria for these groups
+      const initialCriteria: Record<string, Record<string, number>> = {};
+      ids.forEach(id => {
+        initialCriteria[id] = {
+          'Kesesuaian dengan tema': 0,
+          'Kreativitas': 0,
+          'Kelengkapan Kelompok': 0,
+          'Ekspresi/Gaya': 0
+        };
+      });
+      setCriteria(initialCriteria);
+    }
+  }, [searchParams]);
 
   const fetchGroups = async () => {
     try {
@@ -48,15 +61,27 @@ export default function JudgeView() {
     }
   };
 
-  const calculateAverage = () => {
-    const scores = Object.values(criteria) as number[];
+  const calculateAverage = (groupId: string) => {
+    const groupCriteria = criteria[groupId];
+    if (!groupCriteria) return 0;
+    const scores = Object.values(groupCriteria) as number[];
     const sum = scores.reduce((a, b) => a + b, 0);
     return Math.round(sum / scores.length);
   };
 
+  const handleCriteriaChange = (groupId: string, criterion: string, value: number) => {
+    setCriteria(prev => ({
+      ...prev,
+      [groupId]: {
+        ...prev[groupId],
+        [criterion]: value
+      }
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedGroup || !judgeName) {
+    if (selectedGroupIds.length === 0 || !judgeName) {
       setError('Mohon lengkapi semua data');
       return;
     }
@@ -65,34 +90,43 @@ export default function JudgeView() {
     setError('');
 
     try {
-      const finalScore = calculateAverage();
-      const group = groups.find(g => g.id === selectedGroup);
-
-      const res = await fetch('/api/assessments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          group_id: selectedGroup,
-          subject: 'Fashion Show',
-          score: finalScore,
-          notes: `Dinilai oleh ${role}: ${judgeName}`,
-          criteria: criteria,
-          role: role
-        })
+      // Submit assessments for all selected groups
+      const promises = selectedGroupIds.map(async (groupId) => {
+        const finalScore = calculateAverage(groupId);
+        
+        return fetch('/api/assessments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            group_id: groupId,
+            subject: 'Fashion Show',
+            score: finalScore,
+            notes: `Dinilai oleh ${role}: ${judgeName}`,
+            criteria: criteria[groupId],
+            role: role
+          })
+        });
       });
 
-      if (res.ok) {
+      const results = await Promise.all(promises);
+      const allOk = results.every(res => res.ok);
+
+      if (allOk) {
         setSuccess(true);
         setJudgeName('');
-        setSelectedGroup('');
-        setCriteria({
-          'Kesesuaian dengan tema': 0,
-          'Kreativitas': 0,
-          'Kelengkapan Kelompok': 0,
-          'Ekspresi/Gaya': 0
+        // Reset criteria
+        const resetCriteria: Record<string, Record<string, number>> = {};
+        selectedGroupIds.forEach(id => {
+          resetCriteria[id] = {
+            'Kesesuaian dengan tema': 0,
+            'Kreativitas': 0,
+            'Kelengkapan Kelompok': 0,
+            'Ekspresi/Gaya': 0
+          };
         });
+        setCriteria(resetCriteria);
       } else {
-        setError('Gagal menyimpan penilaian');
+        setError('Gagal menyimpan sebagian penilaian');
       }
     } catch (err) {
       setError('Terjadi kesalahan koneksi');
@@ -119,24 +153,46 @@ export default function JudgeView() {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-pulse text-slate-400 font-bold">Memuat data...</div>
+      </div>
+    );
+  }
+
+  if (selectedGroupIds.length === 0) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-3xl shadow-xl text-center max-w-md w-full">
+          <AlertCircle size={48} className="text-red-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-slate-900 mb-2">Kelompok Tidak Ditemukan</h2>
+          <p className="text-slate-500">Scan QR Code yang valid untuk memberikan penilaian.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="max-w-lg mx-auto bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200"
+        className="max-w-2xl mx-auto space-y-6"
       >
-        <div className="bg-slate-900 p-6 text-white">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-white/10 rounded-xl">
-              <Trophy size={24} />
+        <div className="bg-slate-900 rounded-3xl shadow-xl overflow-hidden border border-slate-200">
+          <div className="p-6 text-white">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-white/10 rounded-xl">
+                <Trophy size={24} />
+              </div>
+              <h1 className="text-xl font-bold">Penilaian Fashion Show</h1>
             </div>
-            <h1 className="text-xl font-bold">Penilaian Fashion Show</h1>
+            <p className="text-slate-400 text-sm">Silakan berikan penilaian objektif untuk kelompok yang terpilih.</p>
           </div>
-          <p className="text-slate-400 text-sm">Silakan berikan penilaian objektif untuk setiap kelompok.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {error && (
             <div className="p-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium flex items-center gap-2">
               <AlertCircle size={16} />
@@ -144,9 +200,7 @@ export default function JudgeView() {
             </div>
           )}
 
-          {/* Role Selection Removed - Role is determined by URL parameter */}
-
-          <div>
+          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
               Nama {role}
             </label>
@@ -163,61 +217,61 @@ export default function JudgeView() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Pilih Kelompok</label>
-            <div className="relative">
-              <Users className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-              <select 
-                required
-                value={selectedGroup}
-                onChange={(e) => setSelectedGroup(e.target.value)}
-                className="w-full pl-12 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all appearance-none"
-              >
-                <option value="">Pilih Kelompok...</option>
-                {groups.map(g => (
-                  <option key={g.id} value={g.id}>{g.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-4 pt-4 border-t border-slate-100">
-            <h3 className="font-bold text-slate-900 flex items-center gap-2">
-              <Star className="text-amber-400 fill-amber-400" size={18} />
-              Kriteria Penilaian
-            </h3>
+          {selectedGroupIds.map((groupId, index) => {
+            const group = groups.find(g => g.id === groupId);
+            if (!group) return null;
             
-            {Object.keys(criteria).map((criterion) => (
-              <div key={criterion} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                <div className="flex justify-between mb-2">
-                  <label className="text-xs font-bold text-slate-600 uppercase">{criterion}</label>
-                  <span className="text-sm font-bold text-brand-600">{criteria[criterion]}</span>
+            return (
+              <motion.div 
+                key={groupId}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden"
+              >
+                <div className="bg-slate-50 p-4 border-b border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-700 font-bold">
+                      {group.name.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Kelompok</p>
+                      <h3 className="font-bold text-slate-900">{group.name}</h3>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Rata-rata</p>
+                    <p className="text-xl font-black text-brand-600">{calculateAverage(groupId)}</p>
+                  </div>
                 </div>
-                <input 
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="1"
-                  value={criteria[criterion]}
-                  onChange={(e) => setCriteria({
-                    ...criteria,
-                    [criterion]: parseInt(e.target.value)
-                  })}
-                  className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-600"
-                />
-                <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-medium">
-                  <span>0</span>
-                  <span>50</span>
-                  <span>100</span>
-                </div>
-              </div>
-            ))}
-          </div>
 
-          <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-            <span className="text-sm font-bold text-slate-500">Total Nilai Rata-rata:</span>
-            <span className="text-2xl font-black text-slate-900">{calculateAverage()}</span>
-          </div>
+                <div className="p-6 space-y-6">
+                  {Object.keys(criteria[groupId] || {}).map((criterion) => (
+                    <div key={criterion}>
+                      <div className="flex justify-between mb-2">
+                        <label className="text-xs font-bold text-slate-600 uppercase">{criterion}</label>
+                        <span className="text-sm font-bold text-brand-600">{criteria[groupId]?.[criterion] || 0}</span>
+                      </div>
+                      <input 
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={criteria[groupId]?.[criterion] || 0}
+                        onChange={(e) => handleCriteriaChange(groupId, criterion, parseInt(e.target.value))}
+                        className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-brand-600"
+                      />
+                      <div className="flex justify-between text-[10px] text-slate-400 mt-1 font-medium">
+                        <span>0</span>
+                        <span>50</span>
+                        <span>100</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            );
+          })}
 
           <button 
             type="submit"
@@ -229,7 +283,7 @@ export default function JudgeView() {
             ) : (
               <>
                 <Send size={18} />
-                Kirim Penilaian
+                Kirim Semua Penilaian
               </>
             )}
           </button>

@@ -96,6 +96,12 @@ export default function AdminDashboard() {
   const [dbError, setDbError] = useState<string>('');
   const [isAddingAssessment, setIsAddingAssessment] = useState(false);
   const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
+  
+  // QR Generation State
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
+  const [qrRole, setQrRole] = useState<'Juri' | 'Peserta'>('Juri');
+  const [selectedQrGroups, setSelectedQrGroups] = useState<string[]>([]);
+
   const [isAddingGroup, setIsAddingGroup] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -473,22 +479,22 @@ export default function AdminDashboard() {
 
           <div className="pt-4 mt-4 border-t border-slate-100 space-y-2">
             <button 
-              onClick={() => setQrData({
-                url: `${window.location.origin}/judge/fashion-show?role=Juri`,
-                title: 'Scan untuk Juri',
-                desc: 'Tunjukkan QR Code ini kepada Juri Fashion Show untuk memberikan penilaian.'
-              })}
+              onClick={() => {
+                setQrRole('Juri');
+                setSelectedQrGroups([]);
+                setIsQrModalOpen(true);
+              }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200"
             >
               <QrCode size={20} />
               <span>QR Code Juri</span>
             </button>
             <button 
-              onClick={() => setQrData({
-                url: `${window.location.origin}/judge/fashion-show?role=Peserta`,
-                title: 'Scan untuk Peserta',
-                desc: 'Tunjukkan QR Code ini kepada Peserta Fashion Show untuk memberikan penilaian.'
-              })}
+              onClick={() => {
+                setQrRole('Peserta');
+                setSelectedQrGroups([]);
+                setIsQrModalOpen(true);
+              }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200"
             >
               <Users size={20} />
@@ -1409,6 +1415,88 @@ export default function AdminDashboard() {
                     Daftarkan Kelompok
                   </button>
                 </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {isQrModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsQrModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <h3 className="text-xl font-bold text-slate-900">Pilih Kelompok ({qrRole})</h3>
+                <button 
+                  onClick={() => setIsQrModalOpen(false)}
+                  className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
+                >
+                  <PlusCircle className="rotate-45" size={24} />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto">
+                <p className="text-sm text-slate-500 mb-4">
+                  Pilih maksimal 2 kelompok untuk dinilai sekaligus.
+                </p>
+                <div className="space-y-2">
+                  {groups.map((g) => (
+                    <label 
+                      key={g.id} 
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all",
+                        selectedQrGroups.includes(g.id) 
+                          ? "bg-brand-50 border-brand-500 ring-1 ring-brand-500" 
+                          : "bg-white border-slate-200 hover:border-brand-300"
+                      )}
+                    >
+                      <input 
+                        type="checkbox"
+                        className="w-5 h-5 rounded text-brand-600 focus:ring-brand-500 border-gray-300"
+                        checked={selectedQrGroups.includes(g.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            if (selectedQrGroups.length < 2) {
+                              setSelectedQrGroups([...selectedQrGroups, g.id]);
+                            }
+                          } else {
+                            setSelectedQrGroups(selectedQrGroups.filter(id => id !== g.id));
+                          }
+                        }}
+                      />
+                      <span className="font-medium text-slate-900">{g.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-slate-100 bg-slate-50 shrink-0">
+                <button 
+                  disabled={selectedQrGroups.length === 0}
+                  onClick={() => {
+                    const url = `${window.location.origin}/judge/fashion-show?role=${qrRole}&group_id=${selectedQrGroups.join(',')}`;
+                    setQrData({
+                      url,
+                      title: `QR Code ${qrRole}`,
+                      desc: `Scan untuk menilai kelompok: ${groups.filter(g => selectedQrGroups.includes(g.id)).map(g => g.name).join(', ')}`
+                    });
+                    setIsQrModalOpen(false);
+                  }}
+                  className="w-full bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl font-bold transition-all shadow-lg shadow-brand-600/20 active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <QrCode size={20} />
+                  Generate QR Code
+                </button>
               </div>
             </motion.div>
           </div>
