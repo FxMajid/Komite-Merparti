@@ -114,12 +114,6 @@ export default function JudgeView() {
           </div>
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Penilaian Terkirim!</h2>
           <p className="text-slate-500 mb-8">Terima kasih atas penilaian Anda untuk Fashion Show ini.</p>
-          <button 
-            onClick={() => setSuccess(false)}
-            className="text-brand-600 font-bold hover:underline"
-          >
-            Kirim Penilaian Lain
-          </button>
         </motion.div>
       </div>
     );

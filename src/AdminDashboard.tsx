@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   LayoutDashboard, 
   Users, 
@@ -21,7 +21,10 @@ import {
   LogOut,
   Trash2,
   Edit2,
-  QrCode
+  QrCode,
+  Trophy,
+  Medal,
+  Crown
 } from 'lucide-react';
 import QRCode from "react-qr-code";
 import { 
@@ -84,7 +87,7 @@ export default function AdminDashboard() {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'assessments'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'assessments' | 'ranking'>('overview');
   const [qrData, setQrData] = useState<{url: string, title: string, desc: string} | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -119,6 +122,34 @@ export default function AdminDashboard() {
   const [newGroup, setNewGroup] = useState({
     name: ''
   });
+
+  const rankings = useMemo(() => {
+    const groupStats = groups.map(group => {
+      const groupAssessments = assessments.filter(a => a.group_id === group.id);
+      const totalScore = groupAssessments.reduce((sum, a) => sum + a.score, 0);
+      const avgScore = groupAssessments.length > 0 ? totalScore / groupAssessments.length : 0;
+      
+      const juriAssessments = groupAssessments.filter(a => !a.role || a.role === 'Juri');
+      const juriTotal = juriAssessments.reduce((sum, a) => sum + a.score, 0);
+      const juriAvg = juriAssessments.length > 0 ? juriTotal / juriAssessments.length : 0;
+      
+      const pesertaAssessments = groupAssessments.filter(a => a.role === 'Peserta');
+      const pesertaTotal = pesertaAssessments.reduce((sum, a) => sum + a.score, 0);
+      const pesertaAvg = pesertaAssessments.length > 0 ? pesertaTotal / pesertaAssessments.length : 0;
+
+      return {
+        ...group,
+        avgScore,
+        juriAvg,
+        pesertaAvg,
+        totalVotes: groupAssessments.length,
+        juriVotes: juriAssessments.length,
+        pesertaVotes: pesertaAssessments.length
+      };
+    });
+
+    return groupStats.sort((a, b) => b.avgScore - a.avgScore);
+  }, [groups, assessments]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -427,6 +458,18 @@ export default function AdminDashboard() {
             <BookOpen size={20} />
             <span>Riwayat Nilai</span>
           </button>
+          <button 
+            onClick={() => setActiveTab('ranking')}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
+              activeTab === 'ranking' 
+                ? "bg-brand-50 text-brand-700 font-semibold" 
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            )}
+          >
+            <Trophy size={20} />
+            <span>Ranking</span>
+          </button>
 
           <div className="pt-4 mt-4 border-t border-slate-100 space-y-2">
             <button 
@@ -504,6 +547,7 @@ export default function AdminDashboard() {
               {activeTab === 'overview' && 'Dashboard Overview'}
               {activeTab === 'groups' && 'Manajemen Data Kelompok'}
               {activeTab === 'assessments' && 'Riwayat Penilaian'}
+              {activeTab === 'ranking' && 'Ranking & Klasemen'}
             </h2>
             <p className="text-sm text-slate-500">Selamat datang kembali, Admin</p>
           </div>
@@ -822,6 +866,135 @@ export default function AdminDashboard() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'ranking' && (
+                <motion.div 
+                  key="ranking"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="space-y-8"
+                >
+                  {/* Top 3 Podium */}
+                  <div className="flex flex-col md:flex-row items-end justify-center gap-4 md:gap-8 pb-8 border-b border-slate-200 min-h-[300px]">
+                    {/* 2nd Place */}
+                    {rankings[1] && (
+                      <div className="flex flex-col items-center order-2 md:order-1">
+                        <div className="mb-4 text-center">
+                          <h3 className="font-bold text-slate-900 text-lg">{rankings[1].name}</h3>
+                          <p className="text-slate-500 font-medium">{rankings[1].avgScore.toFixed(1)}</p>
+                        </div>
+                        <div className="w-24 md:w-32 h-32 md:h-40 bg-slate-200 rounded-t-2xl flex items-end justify-center pb-4 relative">
+                          <div className="absolute -top-6 w-12 h-12 bg-slate-300 rounded-full flex items-center justify-center text-slate-600 font-bold border-4 border-white shadow-lg">
+                            2
+                          </div>
+                          <Medal size={32} className="text-slate-400 mb-2" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 1st Place */}
+                    {rankings[0] && (
+                      <div className="flex flex-col items-center order-1 md:order-2 z-10">
+                        <div className="mb-4 text-center">
+                          <Crown size={32} className="text-amber-400 mx-auto mb-2 fill-amber-400 animate-bounce" />
+                          <h3 className="font-bold text-slate-900 text-xl">{rankings[0].name}</h3>
+                          <p className="text-brand-600 font-bold text-lg">{rankings[0].avgScore.toFixed(1)}</p>
+                        </div>
+                        <div className="w-28 md:w-40 h-40 md:h-56 bg-gradient-to-b from-amber-300 to-amber-400 rounded-t-2xl flex items-end justify-center pb-6 relative shadow-xl shadow-amber-200">
+                          <div className="absolute -top-6 w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center text-amber-600 font-bold border-4 border-white shadow-lg text-xl">
+                            1
+                          </div>
+                          <Trophy size={48} className="text-white mb-2" />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 3rd Place */}
+                    {rankings[2] && (
+                      <div className="flex flex-col items-center order-3">
+                        <div className="mb-4 text-center">
+                          <h3 className="font-bold text-slate-900 text-lg">{rankings[2].name}</h3>
+                          <p className="text-slate-500 font-medium">{rankings[2].avgScore.toFixed(1)}</p>
+                        </div>
+                        <div className="w-24 md:w-32 h-24 md:h-32 bg-orange-200 rounded-t-2xl flex items-end justify-center pb-4 relative">
+                          <div className="absolute -top-6 w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-orange-600 font-bold border-4 border-white shadow-lg">
+                            3
+                          </div>
+                          <Medal size={32} className="text-orange-400 mb-2" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Full Ranking Table */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                    <div className="p-6 border-b border-slate-100">
+                      <h4 className="font-bold text-slate-900 flex items-center gap-2">
+                        <Trophy size={20} className="text-brand-600" />
+                        Klasemen Lengkap
+                      </h4>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left">
+                        <thead>
+                          <tr className="bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
+                            <th className="px-6 py-4 text-center w-16">Rank</th>
+                            <th className="px-6 py-4">Kelompok</th>
+                            <th className="px-6 py-4 text-center">Total Nilai</th>
+                            <th className="px-6 py-4 text-center">Rata-rata Juri</th>
+                            <th className="px-6 py-4 text-center">Rata-rata Peserta</th>
+                            <th className="px-6 py-4 text-center">Total Vote</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {rankings.map((group, index) => (
+                            <tr key={group.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="px-6 py-4 text-center">
+                                <span className={cn(
+                                  "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm mx-auto",
+                                  index === 0 ? "bg-amber-100 text-amber-600" :
+                                  index === 1 ? "bg-slate-100 text-slate-600" :
+                                  index === 2 ? "bg-orange-100 text-orange-600" :
+                                  "text-slate-400"
+                                )}>
+                                  {index + 1}
+                                </span>
+                              </td>
+                              <td className="px-6 py-4">
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold">
+                                    {group.name.charAt(0)}
+                                  </div>
+                                  <span className="font-bold text-slate-900">{group.name}</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <span className="text-lg font-black text-slate-900">{group.avgScore.toFixed(1)}</span>
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <div className="inline-flex flex-col items-center">
+                                  <span className="font-bold text-purple-600">{group.juriAvg.toFixed(1)}</span>
+                                  <span className="text-[10px] text-slate-400">{group.juriVotes} suara</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <div className="inline-flex flex-col items-center">
+                                  <span className="font-bold text-blue-600">{group.pesertaAvg.toFixed(1)}</span>
+                                  <span className="text-[10px] text-slate-400">{group.pesertaVotes} suara</span>
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <span className="text-sm font-medium text-slate-600">{group.totalVotes}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </motion.div>
               )}
