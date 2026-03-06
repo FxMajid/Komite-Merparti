@@ -104,6 +104,42 @@ export default function AdminDashboard() {
 
   const [isAddingGroup, setIsAddingGroup] = useState(false);
   const [loading, setLoading] = useState(true);
+  
+  const [qrStatus, setQrStatus] = useState({ juri: true, peserta: true });
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchQrStatus();
+    }
+  }, [isLoggedIn]);
+
+  const fetchQrStatus = async () => {
+    try {
+      const res = await fetch('/api/settings/qr-status');
+      if (res.ok) {
+        const data = await res.json();
+        setQrStatus(data);
+      }
+    } catch (err) {
+      console.error("Failed to fetch QR status", err);
+    }
+  };
+
+  const toggleQrStatus = async (role: 'juri' | 'peserta') => {
+    const newStatus = { ...qrStatus, [role]: !qrStatus[role] };
+    setQrStatus(newStatus);
+    try {
+      await fetch('/api/settings/qr-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newStatus)
+      });
+    } catch (err) {
+      console.error("Failed to update QR status", err);
+      // Revert on error
+      setQrStatus(qrStatus);
+    }
+  };
 
   // Form states
   const [newAssessment, setNewAssessment] = useState<{
@@ -478,28 +514,53 @@ export default function AdminDashboard() {
           </button>
 
           <div className="pt-4 mt-4 border-t border-slate-100 space-y-2">
-            <button 
-              onClick={() => {
-                setQrRole('Juri');
-                setSelectedQrGroups([]);
-                setIsQrModalOpen(true);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200"
-            >
-              <QrCode size={20} />
-              <span>QR Code Juri</span>
-            </button>
-            <button 
-              onClick={() => {
-                setQrRole('Peserta');
-                setSelectedQrGroups([]);
-                setIsQrModalOpen(true);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-slate-500 hover:bg-slate-50 hover:text-slate-900 transition-all duration-200"
-            >
-              <Users size={20} />
-              <span>QR Code Peserta</span>
-            </button>
+            <div className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 rounded-xl transition-all duration-200 group">
+              <button 
+                onClick={() => {
+                  setQrRole('Juri');
+                  setSelectedQrGroups([]);
+                  setIsQrModalOpen(true);
+                }}
+                className="flex-1 flex items-center gap-3 text-slate-500 group-hover:text-slate-900 text-left"
+              >
+                <QrCode size={20} />
+                <span>QR Code Juri</span>
+              </button>
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleQrStatus('juri');
+                }}
+                title={qrStatus.juri ? "Nonaktifkan Link Juri" : "Aktifkan Link Juri"}
+                className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-colors shrink-0 ${qrStatus.juri ? 'bg-emerald-500' : 'bg-slate-300'}`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${qrStatus.juri ? 'translate-x-4' : 'translate-x-0'}`} />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 rounded-xl transition-all duration-200 group">
+              <button 
+                onClick={() => {
+                  setQrRole('Peserta');
+                  setSelectedQrGroups([]);
+                  setIsQrModalOpen(true);
+                }}
+                className="flex-1 flex items-center gap-3 text-slate-500 group-hover:text-slate-900 text-left"
+              >
+                <Users size={20} />
+                <span>QR Code Peserta</span>
+              </button>
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleQrStatus('peserta');
+                }}
+                title={qrStatus.peserta ? "Nonaktifkan Link Peserta" : "Aktifkan Link Peserta"}
+                className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-colors shrink-0 ${qrStatus.peserta ? 'bg-emerald-500' : 'bg-slate-300'}`}
+              >
+                <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${qrStatus.peserta ? 'translate-x-4' : 'translate-x-0'}`} />
+              </div>
+            </div>
           </div>
         </nav>
 

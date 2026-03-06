@@ -312,6 +312,36 @@ app.delete("/api/groups/:id", async (req, res) => {
   }
 });
 
+// Settings Endpoints
+app.get("/api/settings/qr-status", async (req, res) => {
+  if (!db) return res.status(500).json({ error: "Database not initialized" });
+  try {
+    const doc = await db.collection("settings").doc("qr_status").get();
+    if (!doc.exists) {
+      // Default to true if not set
+      const defaultStatus = { juri: true, peserta: true };
+      await db.collection("settings").doc("qr_status").set(defaultStatus);
+      return res.json(defaultStatus);
+    }
+    res.json(doc.data());
+  } catch (error: any) {
+    console.error("Get QR status error:", error);
+    res.status(500).json({ error: "Failed to get QR status" });
+  }
+});
+
+app.post("/api/settings/qr-status", async (req, res) => {
+  if (!db) return res.status(500).json({ error: "Database not initialized" });
+  try {
+    const { juri, peserta } = req.body;
+    await db.collection("settings").doc("qr_status").set({ juri, peserta }, { merge: true });
+    res.json({ success: true, juri, peserta });
+  } catch (error: any) {
+    console.error("Update QR status error:", error);
+    res.status(500).json({ error: "Failed to update QR status" });
+  }
+});
+
 // Seed Groups Function
 async function seedGroups() {
   if (!db) return;

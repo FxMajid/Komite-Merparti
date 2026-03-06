@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, AlertCircle, Send, User, Users, Star, Trophy, UserCircle2 } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Send, User, Users, Star, Trophy, UserCircle2, Lock } from 'lucide-react';
 
 interface Group {
   id: string;
@@ -16,6 +16,11 @@ export default function JudgeView() {
   const [role, setRole] = useState<'Juri' | 'Peserta'>(
     (roleParam === 'Peserta' || roleParam === 'Juri') ? roleParam : 'Juri'
   );
+
+  useEffect(() => {
+    const newRole = (roleParam === 'Peserta' || roleParam === 'Juri') ? roleParam : 'Juri';
+    setRole(newRole);
+  }, [roleParam]);
   
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -25,27 +30,55 @@ export default function JudgeView() {
   const [error, setError] = useState('');
 
   const [criteria, setCriteria] = useState<Record<string, Record<string, number>>>({});
+  const [isAccessAllowed, setIsAccessAllowed] = useState(true);
+  const [checkingAccess, setCheckingAccess] = useState(true);
 
   useEffect(() => {
-    fetchGroups();
-    const groupParam = searchParams.get('group_id');
-    if (groupParam) {
-      const ids = groupParam.split(',').filter(id => id.trim() !== '');
-      setSelectedGroupIds(ids);
-      
-      // Initialize criteria for these groups
-      const initialCriteria: Record<string, Record<string, number>> = {};
-      ids.forEach(id => {
-        initialCriteria[id] = {
-          'Kesesuaian dengan tema': 0,
-          'Kreativitas': 0,
-          'Kelengkapan Kelompok': 0,
-          'Ekspresi/Gaya': 0
-        };
-      });
-      setCriteria(initialCriteria);
+    checkAccess();
+  }, [role]);
+
+  const checkAccess = async () => {
+    try {
+      const res = await fetch('/api/settings/qr-status');
+      if (res.ok) {
+        const status = await res.json();
+        if (role === 'Juri' && !status.juri) {
+          setIsAccessAllowed(false);
+        } else if (role === 'Peserta' && !status.peserta) {
+          setIsAccessAllowed(false);
+        } else {
+          setIsAccessAllowed(true);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to check access status", err);
+    } finally {
+      setCheckingAccess(false);
     }
-  }, [searchParams]);
+  };
+
+  useEffect(() => {
+    if (isAccessAllowed) {
+      fetchGroups();
+      const groupParam = searchParams.get('group_id');
+      if (groupParam) {
+        const ids = groupParam.split(',').filter(id => id.trim() !== '');
+        setSelectedGroupIds(ids);
+        
+        // Initialize criteria for these groups
+        const initialCriteria: Record<string, Record<string, number>> = {};
+        ids.forEach(id => {
+          initialCriteria[id] = {
+            'Kesesuaian dengan tema': 0,
+            'Kreativitas': 0,
+            'Kelengkapan Kelompok': 0,
+            'Ekspresi/Gaya': 0
+          };
+        });
+        setCriteria(initialCriteria);
+      }
+    }
+  }, [searchParams, isAccessAllowed]);
 
   const fetchGroups = async () => {
     try {
@@ -134,6 +167,31 @@ export default function JudgeView() {
       setSubmitting(false);
     }
   };
+
+  if (checkingAccess) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-pulse text-slate-400 font-bold">Memeriksa akses...</div>
+      </div>
+    );
+  }
+
+  if (!isAccessAllowed) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-3xl shadow-xl text-center max-w-md w-full">
+          <div className="w-20 h-20 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Lock size={40} />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-2">Akses Ditutup</h2>
+          <p className="text-slate-500 mb-6">
+            Maaf, link penilaian untuk <strong>{role}</strong> saat ini sedang dinonaktifkan oleh panitia.
+          </p>
+          <p className="text-xs text-slate-400">Silakan hubungi panitia jika Anda merasa ini adalah kesalahan.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
