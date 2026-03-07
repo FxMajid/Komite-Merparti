@@ -188,6 +188,10 @@ export default function AdminDashboard() {
       const merpatiTotal = merpatiAssessments.reduce((sum, a) => sum + a.score, 0);
       const merpatiAvg = merpatiAssessments.length > 0 ? merpatiTotal / merpatiAssessments.length : 0;
 
+      const bonusAssessments = groupAssessments.filter(a => a.subject === 'Bonus');
+      const bonusTotal = bonusAssessments.reduce((sum, a) => sum + a.score, 0);
+      const bonusAvg = bonusAssessments.length > 0 ? bonusTotal / bonusAssessments.length : 0;
+
       return {
         ...group,
         avgScore,
@@ -195,6 +199,7 @@ export default function AdminDashboard() {
         pesertaAvg,
         fashionAvg,
         merpatiAvg,
+        bonusAvg,
         totalVotes: groupAssessments.length,
         juriVotes: juriAssessments.length,
         pesertaVotes: pesertaAssessments.length
@@ -964,9 +969,10 @@ export default function AdminDashboard() {
                         <div className="mb-4 text-center">
                           <h3 className="font-bold text-slate-900 text-lg">{rankings[1].name}</h3>
                           <p className="text-slate-500 font-medium text-xl">{rankings[1].avgScore.toFixed(1)}</p>
-                          <div className="flex gap-2 text-[10px] mt-1 justify-center">
+                          <div className="flex gap-2 text-[10px] mt-1 justify-center flex-wrap">
                             <span className="text-pink-600 font-bold bg-pink-50 px-1.5 py-0.5 rounded">FS: {rankings[1].fashionAvg.toFixed(1)}</span>
                             <span className="text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">MK: {rankings[1].merpatiAvg.toFixed(1)}</span>
+                            <span className="text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">B: {rankings[1].bonusAvg.toFixed(1)}</span>
                           </div>
                         </div>
                         <div className="w-24 md:w-32 h-32 md:h-40 bg-slate-200 rounded-t-2xl flex items-end justify-center pb-4 relative">
@@ -985,9 +991,10 @@ export default function AdminDashboard() {
                           <Crown size={32} className="text-amber-400 mx-auto mb-2 fill-amber-400 animate-bounce" />
                           <h3 className="font-bold text-slate-900 text-xl">{rankings[0].name}</h3>
                           <p className="text-brand-600 font-bold text-2xl">{rankings[0].avgScore.toFixed(1)}</p>
-                          <div className="flex gap-2 text-xs mt-1 justify-center">
+                          <div className="flex gap-2 text-xs mt-1 justify-center flex-wrap">
                             <span className="text-pink-600 font-bold bg-pink-50 px-2 py-0.5 rounded">FS: {rankings[0].fashionAvg.toFixed(1)}</span>
                             <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded">MK: {rankings[0].merpatiAvg.toFixed(1)}</span>
+                            <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">B: {rankings[0].bonusAvg.toFixed(1)}</span>
                           </div>
                         </div>
                         <div className="w-28 md:w-40 h-40 md:h-56 bg-gradient-to-b from-amber-300 to-amber-400 rounded-t-2xl flex items-end justify-center pb-6 relative shadow-xl shadow-amber-200">
@@ -1005,9 +1012,10 @@ export default function AdminDashboard() {
                         <div className="mb-4 text-center">
                           <h3 className="font-bold text-slate-900 text-lg">{rankings[2].name}</h3>
                           <p className="text-slate-500 font-medium text-xl">{rankings[2].avgScore.toFixed(1)}</p>
-                          <div className="flex gap-2 text-[10px] mt-1 justify-center">
+                          <div className="flex gap-2 text-[10px] mt-1 justify-center flex-wrap">
                             <span className="text-pink-600 font-bold bg-pink-50 px-1.5 py-0.5 rounded">FS: {rankings[2].fashionAvg.toFixed(1)}</span>
                             <span className="text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">MK: {rankings[2].merpatiAvg.toFixed(1)}</span>
+                            <span className="text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">B: {rankings[2].bonusAvg.toFixed(1)}</span>
                           </div>
                         </div>
                         <div className="w-24 md:w-32 h-24 md:h-32 bg-orange-200 rounded-t-2xl flex items-end justify-center pb-4 relative">
@@ -1037,6 +1045,7 @@ export default function AdminDashboard() {
                             <th className="px-6 py-4 text-center">Total Nilai</th>
                             <th className="px-6 py-4 text-center">Fashion Show</th>
                             <th className="px-6 py-4 text-center">Merpati Ekor Kata</th>
+                            <th className="px-6 py-4 text-center">Bonus</th>
                             <th className="px-6 py-4 text-center">Rata-rata Juri</th>
                             <th className="px-6 py-4 text-center">Rata-rata Peserta</th>
                             <th className="px-6 py-4 text-center">Total Vote</th>
@@ -1072,6 +1081,9 @@ export default function AdminDashboard() {
                               </td>
                               <td className="px-6 py-4 text-center">
                                 <span className="font-bold text-indigo-600">{group.merpatiAvg.toFixed(1)}</span>
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <span className="font-bold text-emerald-600">{group.bonusAvg.toFixed(1)}</span>
                               </td>
                               <td className="px-6 py-4 text-center">
                                 <div className="inline-flex flex-col items-center">
@@ -1268,6 +1280,7 @@ export default function AdminDashboard() {
                       >
                         <option>Merpati Ekor Kata</option>
                         <option>Fashion Show</option>
+                        <option>Bonus</option>
                       </select>
                     </div>
                     {newAssessment.subject !== 'Fashion Show' && (
