@@ -168,29 +168,49 @@ export default function AdminDashboard() {
   const rankings = useMemo(() => {
     const groupStats = groups.map(group => {
       const groupAssessments = assessments.filter(a => a.group_id === group.id);
-      const totalScore = groupAssessments.reduce((sum, a) => sum + a.score, 0);
-      const avgScore = groupAssessments.length > 0 ? totalScore / groupAssessments.length : 0;
       
-      const juriAssessments = groupAssessments.filter(a => !a.role || a.role === 'Juri');
-      const juriTotal = juriAssessments.reduce((sum, a) => sum + a.score, 0);
-      const juriAvg = juriAssessments.length > 0 ? juriTotal / juriAssessments.length : 0;
-      
-      const pesertaAssessments = groupAssessments.filter(a => a.role === 'Peserta');
-      const pesertaTotal = pesertaAssessments.reduce((sum, a) => sum + a.score, 0);
-      const pesertaAvg = pesertaAssessments.length > 0 ? pesertaTotal / pesertaAssessments.length : 0;
-
-      // Subject specific stats
+      // 1. Pisahkan berdasarkan kategori
       const fashionAssessments = groupAssessments.filter(a => a.subject === 'Fashion Show');
-      const fashionTotal = fashionAssessments.reduce((sum, a) => sum + a.score, 0);
-      const fashionAvg = fashionAssessments.length > 0 ? fashionTotal / fashionAssessments.length : 0;
-
       const merpatiAssessments = groupAssessments.filter(a => a.subject === 'Merpati Ekor Kata');
-      const merpatiTotal = merpatiAssessments.reduce((sum, a) => sum + a.score, 0);
-      const merpatiAvg = merpatiAssessments.length > 0 ? merpatiTotal / merpatiAssessments.length : 0;
-
       const bonusAssessments = groupAssessments.filter(a => a.subject === 'Bonus');
-      const bonusTotal = bonusAssessments.reduce((sum, a) => sum + a.score, 0);
-      const bonusAvg = bonusAssessments.length > 0 ? bonusTotal / bonusAssessments.length : 0;
+
+      // 2. Hitung rata-rata per kategori utama
+      const fashionAvg = fashionAssessments.length > 0 
+        ? fashionAssessments.reduce((sum, a) => sum + a.score, 0) / fashionAssessments.length 
+        : 0;
+        
+      const merpatiAvg = merpatiAssessments.length > 0 
+        ? merpatiAssessments.reduce((sum, a) => sum + a.score, 0) / merpatiAssessments.length 
+        : 0;
+
+      // Bonus diakumulasi (dijumlahkan), bukan dirata-rata
+      const totalBonus = bonusAssessments.reduce((sum, a) => sum + a.score, 0);
+
+      // 3. Pisahkan Juri dan Peserta HANYA untuk nilai utama (Fashion + Merpati)
+      const mainAssessments = [...fashionAssessments, ...merpatiAssessments];
+      const juriAssessments = mainAssessments.filter(a => !a.role || a.role === 'Juri');
+      const pesertaAssessments = mainAssessments.filter(a => a.role === 'Peserta');
+
+      const juriAvg = juriAssessments.length > 0 
+        ? juriAssessments.reduce((sum, a) => sum + a.score, 0) / juriAssessments.length 
+        : 0;
+        
+      const pesertaAvg = pesertaAssessments.length > 0 
+        ? pesertaAssessments.reduce((sum, a) => sum + a.score, 0) / pesertaAssessments.length 
+        : 0;
+
+      // 4. Hitung Nilai Utama dengan Bobot (Juri 70%, Peserta 30%)
+      let mainScore = 0;
+      if (juriAssessments.length > 0 && pesertaAssessments.length > 0) {
+        mainScore = (juriAvg * 0.7) + (pesertaAvg * 0.3);
+      } else if (juriAssessments.length > 0) {
+        mainScore = juriAvg; // 100% Juri jika tidak ada peserta
+      } else if (pesertaAssessments.length > 0) {
+        mainScore = pesertaAvg; // 100% Peserta jika tidak ada juri
+      }
+
+      // 5. Nilai Akhir = Nilai Utama (Berbobot) + Total Bonus
+      const avgScore = mainScore + totalBonus;
 
       return {
         ...group,
@@ -199,7 +219,7 @@ export default function AdminDashboard() {
         pesertaAvg,
         fashionAvg,
         merpatiAvg,
-        bonusAvg,
+        bonusAvg: totalBonus, // Menyimpan total bonus di property ini
         totalVotes: groupAssessments.length,
         juriVotes: juriAssessments.length,
         pesertaVotes: pesertaAssessments.length
@@ -1030,11 +1050,14 @@ export default function AdminDashboard() {
 
                   {/* Full Ranking Table */}
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                    <div className="p-6 border-b border-slate-100">
+                    <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <h4 className="font-bold text-slate-900 flex items-center gap-2">
                         <Trophy size={20} className="text-brand-600" />
                         Klasemen Lengkap
                       </h4>
+                      <div className="text-xs font-medium text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
+                        <span className="font-bold text-slate-700">Formula:</span> (Juri 70% + Peserta 30%) + Total Bonus
+                      </div>
                     </div>
                     <div className="overflow-x-auto">
                       <table className="w-full text-left">
@@ -1045,7 +1068,7 @@ export default function AdminDashboard() {
                             <th className="px-6 py-4 text-center">Total Nilai</th>
                             <th className="px-6 py-4 text-center">Fashion Show</th>
                             <th className="px-6 py-4 text-center">Merpati Ekor Kata</th>
-                            <th className="px-6 py-4 text-center">Bonus</th>
+                            <th className="px-6 py-4 text-center">Total Bonus</th>
                             <th className="px-6 py-4 text-center">Rata-rata Juri</th>
                             <th className="px-6 py-4 text-center">Rata-rata Peserta</th>
                             <th className="px-6 py-4 text-center">Total Vote</th>
