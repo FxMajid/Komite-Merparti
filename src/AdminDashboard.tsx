@@ -106,6 +106,7 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   
   const [qrStatus, setQrStatus] = useState({ juri: true, peserta: true });
+  const [assessmentDetailsModal, setAssessmentDetailsModal] = useState<{groupId: string, groupName: string, role: 'Juri' | 'Peserta'} | null>(null);
 
   useEffect(() => {
     if (isLoggedIn) {
@@ -1109,13 +1110,19 @@ export default function AdminDashboard() {
                                 <span className="font-bold text-emerald-600">{group.bonusAvg.toFixed(1)}</span>
                               </td>
                               <td className="px-6 py-4 text-center">
-                                <div className="inline-flex flex-col items-center">
+                                <div 
+                                  className="inline-flex flex-col items-center cursor-pointer hover:bg-purple-50 p-2 rounded-lg transition-colors"
+                                  onClick={() => setAssessmentDetailsModal({ groupId: group.id, groupName: group.name, role: 'Juri' })}
+                                >
                                   <span className="font-bold text-purple-600">{group.juriAvg.toFixed(1)}</span>
                                   <span className="text-[10px] text-slate-400">{group.juriVotes} suara</span>
                                 </div>
                               </td>
                               <td className="px-6 py-4 text-center">
-                                <div className="inline-flex flex-col items-center">
+                                <div 
+                                  className="inline-flex flex-col items-center cursor-pointer hover:bg-blue-50 p-2 rounded-lg transition-colors"
+                                  onClick={() => setAssessmentDetailsModal({ groupId: group.id, groupName: group.name, role: 'Peserta' })}
+                                >
                                   <span className="font-bold text-blue-600">{group.pesertaAvg.toFixed(1)}</span>
                                   <span className="text-[10px] text-slate-400">{group.pesertaVotes} suara</span>
                                 </div>
@@ -1667,6 +1674,72 @@ export default function AdminDashboard() {
                 >
                   Tutup
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {assessmentDetailsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setAssessmentDetailsModal(null)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <h3 className="text-xl font-bold text-slate-900">
+                  Detail Penilaian {assessmentDetailsModal.role} - {assessmentDetailsModal.groupName}
+                </h3>
+                <button
+                  onClick={() => setAssessmentDetailsModal(null)}
+                  className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
+                >
+                  <PlusCircle className="rotate-45" size={24} />
+                </button>
+              </div>
+              <div className="p-6 overflow-y-auto">
+                {(() => {
+                  const filteredAssessments = assessments.filter(
+                    a => a.group_id === assessmentDetailsModal.groupId &&
+                         (assessmentDetailsModal.role === 'Juri' ? (!a.role || a.role === 'Juri') : a.role === 'Peserta')
+                  );
+
+                  if (filteredAssessments.length === 0) {
+                    return <p className="text-center text-slate-500 py-8">Belum ada penilaian dari {assessmentDetailsModal.role}.</p>;
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      {filteredAssessments.map(a => (
+                        <div key={a.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex justify-between items-center">
+                          <div>
+                            <p className="font-bold text-slate-900 text-sm">
+                              {a.notes.replace(new RegExp(`^Dinilai oleh (Juri|Peserta):\\s*`), '') || 'Anonim'}
+                            </p>
+                            <p className="text-xs text-slate-500 font-medium mt-0.5">{a.subject}</p>
+                            <p className="text-[10px] text-slate-400 mt-1">{new Date(a.date).toLocaleString('id-ID')}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className={cn(
+                              "text-xl font-black",
+                              a.score >= 75 ? "text-emerald-600" : "text-amber-600"
+                            )}>
+                              {a.score}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
               </div>
             </motion.div>
           </div>
