@@ -199,18 +199,18 @@ export default function AdminDashboard() {
         ? pesertaAssessments.reduce((sum, a) => sum + a.score, 0) / pesertaAssessments.length 
         : 0;
 
-      // 4. Hitung Nilai Utama dengan Bobot (Juri 70%, Peserta 30%)
+      // 4. Hitung Nilai Utama dengan Bobot (Juri 50%, Peserta 45%)
       let mainScore = 0;
       if (juriAssessments.length > 0 && pesertaAssessments.length > 0) {
-        mainScore = (juriAvg * 0.7) + (pesertaAvg * 0.3);
+        mainScore = (juriAvg * 0.5) + (pesertaAvg * 0.45);
       } else if (juriAssessments.length > 0) {
-        mainScore = juriAvg; // 100% Juri jika tidak ada peserta
+        mainScore = juriAvg * 0.95; // 95% Juri jika tidak ada peserta
       } else if (pesertaAssessments.length > 0) {
-        mainScore = pesertaAvg; // 100% Peserta jika tidak ada juri
+        mainScore = pesertaAvg * 0.95; // 95% Peserta jika tidak ada juri
       }
 
-      // 5. Nilai Akhir = Nilai Utama (Berbobot) + Total Bonus
-      const avgScore = mainScore + totalBonus;
+      // 5. Nilai Akhir = Nilai Utama (Berbobot) + (Total Bonus * 5%)
+      const avgScore = mainScore + (totalBonus * 0.05);
 
       return {
         ...group,
@@ -1056,7 +1056,7 @@ export default function AdminDashboard() {
                         Klasemen Lengkap
                       </h4>
                       <div className="text-xs font-medium text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                        <span className="font-bold text-slate-700">Formula:</span> (Juri 70% + Peserta 30%) + Total Bonus
+                        <span className="font-bold text-slate-700">Formula:</span> (Juri 50% + Peserta 45% + Total Bonus 5%)
                       </div>
                     </div>
                     <div className="overflow-x-auto">
