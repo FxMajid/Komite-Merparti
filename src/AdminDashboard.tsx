@@ -187,10 +187,9 @@ export default function AdminDashboard() {
       // Bonus diakumulasi (dijumlahkan), bukan dirata-rata
       const totalBonus = bonusAssessments.reduce((sum, a) => sum + a.score, 0);
 
-      // 3. Pisahkan Juri dan Peserta HANYA untuk nilai utama (Fashion + Merpati)
-      const mainAssessments = [...fashionAssessments, ...merpatiAssessments];
-      const juriAssessments = mainAssessments.filter(a => !a.role || a.role === 'Juri');
-      const pesertaAssessments = mainAssessments.filter(a => a.role === 'Peserta');
+      // 3. Pisahkan Juri dan Peserta HANYA untuk Fashion Show (karena Merpati punya bobot sendiri 30%)
+      const juriAssessments = fashionAssessments.filter(a => !a.role || a.role === 'Juri');
+      const pesertaAssessments = fashionAssessments.filter(a => a.role === 'Peserta');
 
       const juriAvg = juriAssessments.length > 0 
         ? juriAssessments.reduce((sum, a) => sum + a.score, 0) / juriAssessments.length 
@@ -200,18 +199,20 @@ export default function AdminDashboard() {
         ? pesertaAssessments.reduce((sum, a) => sum + a.score, 0) / pesertaAssessments.length 
         : 0;
 
-      // 4. Hitung Nilai Utama dengan Bobot (Juri 50%, Peserta 45%)
-      let mainScore = 0;
+      // 4. Hitung Nilai dengan Bobot (Juri 35%, Peserta 30%, Merpati 30%)
+      let fashionScore = 0;
       if (juriAssessments.length > 0 && pesertaAssessments.length > 0) {
-        mainScore = (juriAvg * 0.5) + (pesertaAvg * 0.45);
+        fashionScore = (juriAvg * 0.35) + (pesertaAvg * 0.30);
       } else if (juriAssessments.length > 0) {
-        mainScore = juriAvg * 0.95; // 95% Juri jika tidak ada peserta
+        fashionScore = juriAvg * 0.65; // 65% Juri jika tidak ada peserta
       } else if (pesertaAssessments.length > 0) {
-        mainScore = pesertaAvg * 0.95; // 95% Peserta jika tidak ada juri
+        fashionScore = pesertaAvg * 0.65; // 65% Peserta jika tidak ada juri
       }
 
-      // 5. Nilai Akhir = Nilai Utama (Berbobot) + (Total Bonus * 5%)
-      const avgScore = mainScore + (totalBonus * 0.05);
+      const merpatiScore = merpatiAvg * 0.30;
+
+      // 5. Nilai Akhir = Fashion Score + Merpati Score + (Total Bonus * 5%)
+      const avgScore = fashionScore + merpatiScore + (totalBonus * 0.05);
 
       return {
         ...group,
@@ -1057,7 +1058,7 @@ export default function AdminDashboard() {
                         Klasemen Lengkap
                       </h4>
                       <div className="text-xs font-medium text-slate-500 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-                        <span className="font-bold text-slate-700">Formula:</span> (Juri 50% + Peserta 45% + Total Bonus 5%)
+                        <span className="font-bold text-slate-700">Formula:</span> Juri 35% + Peserta 30% + Merpati 30% + Bonus 5%
                       </div>
                     </div>
                     <div className="overflow-x-auto">
@@ -1709,6 +1710,7 @@ export default function AdminDashboard() {
                 {(() => {
                   const filteredAssessments = assessments.filter(
                     a => a.group_id === assessmentDetailsModal.groupId &&
+                         a.subject === 'Fashion Show' &&
                          (assessmentDetailsModal.role === 'Juri' ? (!a.role || a.role === 'Juri') : a.role === 'Peserta')
                   );
 
