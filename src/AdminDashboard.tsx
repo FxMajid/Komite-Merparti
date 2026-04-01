@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   Users, 
@@ -93,7 +94,9 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ month }: AdminDashboardProps) {
+  const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
+  const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || '');
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'assessments' | 'ranking' | 'subjects'>('overview');
@@ -124,9 +127,13 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
 
   useEffect(() => {
     if (isLoggedIn) {
-      fetchQrStatus();
+      if (userRole === 'user' && month !== 'april') {
+        navigate('/april');
+      } else {
+        fetchQrStatus();
+      }
     }
-  }, [isLoggedIn]);
+  }, [isLoggedIn, userRole, month, navigate]);
 
   const fetchQrStatus = async () => {
     try {
@@ -251,12 +258,17 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      (loginForm.username === 'admin' && loginForm.password === 'kerja') ||
-      (loginForm.username === 'user' && loginForm.password === 'user')
-    ) {
+    if (loginForm.username === 'admin' && loginForm.password === 'kerja') {
       setIsLoggedIn(true);
+      setUserRole('admin');
       localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('userRole', 'admin');
+      setLoginError('');
+    } else if (loginForm.username === 'user' && loginForm.password === 'user') {
+      setIsLoggedIn(true);
+      setUserRole('user');
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('userRole', 'user');
       setLoginError('');
     } else {
       setLoginError('Username atau password salah');
@@ -265,7 +277,9 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
 
   const handleLogout = () => {
     setIsLoggedIn(false);
+    setUserRole('');
     localStorage.removeItem('isLoggedIn');
+    localStorage.removeItem('userRole');
   };
 
   const fetchData = async () => {
@@ -571,15 +585,17 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
             </div>
           </div>
           <div className="mt-4 flex bg-slate-100 p-1 rounded-lg">
-            <button 
-              onClick={() => window.location.href = '/'}
-              className={cn(
-                "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
-                !month ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
-              )}
-            >
-              Utama
-            </button>
+            {userRole !== 'user' && (
+              <button 
+                onClick={() => window.location.href = '/'}
+                className={cn(
+                  "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
+                  !month ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+                )}
+              >
+                Utama
+              </button>
+            )}
             <button 
               onClick={() => window.location.href = '/april'}
               className={cn(
