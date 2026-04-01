@@ -251,7 +251,10 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (loginForm.username === 'admin' && loginForm.password === 'kerja') {
+    if (
+      (loginForm.username === 'admin' && loginForm.password === 'kerja') ||
+      (loginForm.username === 'user' && loginForm.password === 'user')
+    ) {
       setIsLoggedIn(true);
       localStorage.setItem('isLoggedIn', 'true');
       setLoginError('');
