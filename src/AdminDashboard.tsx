@@ -83,6 +83,11 @@ interface Summary {
   }[];
 }
 
+interface Subject {
+  id: string;
+  name: string;
+}
+
 interface AdminDashboardProps {
   month?: string;
 }
@@ -91,9 +96,10 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'assessments' | 'ranking'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'assessments' | 'ranking' | 'subjects'>('overview');
   const [qrData, setQrData] = useState<{url: string, title: string, desc: string} | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [subjects, setSubjects] = useState<Subject[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [dbStatus, setDbStatus] = useState<'connected' | 'error' | 'loading'>('loading');
@@ -107,8 +113,12 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
   const [selectedQrGroups, setSelectedQrGroups] = useState<string[]>([]);
 
   const [isAddingGroup, setIsAddingGroup] = useState(false);
+  const [isAddingSubject, setIsAddingSubject] = useState(false);
   const [loading, setLoading] = useState(true);
   
+  const [confirmModal, setConfirmModal] = useState<{isOpen: boolean, title: string, message: string, onConfirm: () => void} | null>(null);
+  const [alertModal, setAlertModal] = useState<{isOpen: boolean, title: string, message: string} | null>(null);
+
   const [qrStatus, setQrStatus] = useState({ juri: true, peserta: true });
   const [assessmentDetailsModal, setAssessmentDetailsModal] = useState<{groupId: string, groupName: string, role: 'Juri' | 'Peserta'} | null>(null);
 
@@ -167,6 +177,10 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
   });
 
   const [newGroup, setNewGroup] = useState({
+    name: ''
+  });
+
+  const [newSubject, setNewSubject] = useState({
     name: ''
   });
 
@@ -254,20 +268,23 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [groupsRes, assessmentsRes, summaryRes] = await Promise.all([
+      const [groupsRes, assessmentsRes, summaryRes, subjectsRes] = await Promise.all([
         fetch(`/api/groups${month ? `?month=${month}` : ''}`),
         fetch(`/api/assessments${month ? `?month=${month}` : ''}`),
-        fetch(`/api/summary${month ? `?month=${month}` : ''}`)
+        fetch(`/api/summary${month ? `?month=${month}` : ''}`),
+        fetch(`/api/subjects${month ? `?month=${month}` : ''}`)
       ]);
       
-      if (groupsRes.ok && assessmentsRes.ok && summaryRes.ok) {
+      if (groupsRes.ok && assessmentsRes.ok && summaryRes.ok && subjectsRes.ok) {
         const groupsData = await groupsRes.json();
         const assessmentsData = await assessmentsRes.json();
         const summaryData = await summaryRes.json();
+        const subjectsData = await subjectsRes.json();
         
         setGroups(groupsData);
         setAssessments(assessmentsData);
         setSummary(summaryData);
+        setSubjects(subjectsData);
         setDbStatus('connected');
         setDbError('');
       } else {
@@ -397,24 +414,71 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
 
   const handleDeleteGroup = async (id: string) => {
     console.log("Attempting to delete group with ID:", id);
-    if (window.confirm('Apakah Anda yakin ingin menghapus kelompok ini? Semua data penilaian terkait juga akan dihapus.')) {
-      try {
-        const res = await fetch(`/api/groups/${id}${month ? `?month=${month}` : ''}`, {
-          method: 'DELETE'
-        });
-        if (res.ok) {
-          console.log("Group deleted successfully:", id);
-          fetchData();
-        } else {
-          const errorData = await res.json().catch(() => ({}));
-          console.error("Failed to delete group:", errorData);
-          alert(`Gagal menghapus kelompok: ${errorData.message || 'Error tidak diketahui'}`);
+    setConfirmModal({
+      isOpen: true,
+      title: 'Hapus Kelompok',
+      message: 'Apakah Anda yakin ingin menghapus kelompok ini? Semua data penilaian terkait juga akan dihapus.',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/groups/${id}${month ? `?month=${month}` : ''}`, {
+            method: 'DELETE'
+          });
+          if (res.ok) {
+            console.log("Group deleted successfully:", id);
+            fetchData();
+          } else {
+            const errorData = await res.json().catch(() => ({}));
+            console.error("Failed to delete group:", errorData);
+            setAlertModal({ isOpen: true, title: 'Gagal', message: `Gagal menghapus kelompok: ${errorData.message || 'Error tidak diketahui'}` });
+          }
+        } catch (error) {
+          console.error("Error deleting group:", error);
+          setAlertModal({ isOpen: true, title: 'Error', message: "Terjadi kesalahan saat menghapus kelompok." });
         }
-      } catch (error) {
-        console.error("Error deleting group:", error);
-        alert("Terjadi kesalahan saat menghapus kelompok.");
       }
+    });
+  };
+
+  const handleAddSubject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const res = await fetch(`/api/subjects${month ? `?month=${month}` : ''}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newSubject)
+      });
+      if (res.ok) {
+        setIsAddingSubject(false);
+        setNewSubject({ name: '' });
+        fetchData();
+      }
+    } catch (error) {
+      console.error("Error adding subject:", error);
     }
+  };
+
+  const handleDeleteSubject = async (id: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Hapus Perlombaan',
+      message: 'Apakah Anda yakin ingin menghapus perlombaan ini?',
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`/api/subjects/${id}${month ? `?month=${month}` : ''}`, {
+            method: 'DELETE'
+          });
+          if (res.ok) {
+            fetchData();
+          } else {
+            const errorData = await res.json().catch(() => ({}));
+            setAlertModal({ isOpen: true, title: 'Gagal', message: `Gagal menghapus perlombaan: ${errorData.message || 'Error tidak diketahui'}` });
+          }
+        } catch (error) {
+          console.error("Error deleting subject:", error);
+          setAlertModal({ isOpen: true, title: 'Error', message: "Terjadi kesalahan saat menghapus perlombaan." });
+        }
+      }
+    });
   };
 
   const COLORS = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
@@ -574,6 +638,18 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
             <Trophy size={20} />
             <span>Ranking</span>
           </button>
+          <button 
+            onClick={() => setActiveTab('subjects')}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
+              activeTab === 'subjects' 
+                ? "bg-brand-50 text-brand-700 font-semibold" 
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            )}
+          >
+            <Medal size={20} />
+            <span>Data Perlombaan</span>
+          </button>
 
           <div className="pt-4 mt-4 border-t border-slate-100 space-y-2">
             <div className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 rounded-xl transition-all duration-200 group">
@@ -675,6 +751,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
             <h2 className="text-xl font-bold text-slate-900">
               {activeTab === 'overview' && 'Dashboard Overview'}
               {activeTab === 'groups' && 'Manajemen Data Kelompok'}
+              {activeTab === 'subjects' && 'Manajemen Data Perlombaan'}
               {activeTab === 'assessments' && 'Riwayat Penilaian'}
               {activeTab === 'ranking' && 'Ranking & Klasemen'}
             </h2>
@@ -691,11 +768,19 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
               />
             </div>
               <button 
-                onClick={() => activeTab === 'groups' ? setIsAddingGroup(true) : setIsAddingAssessment(true)}
+                onClick={() => {
+                  if (activeTab === 'groups') setIsAddingGroup(true);
+                  else if (activeTab === 'subjects') setIsAddingSubject(true);
+                  else setIsAddingAssessment(true);
+                }}
                 className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-semibold transition-all shadow-lg shadow-brand-600/20 active:scale-95"
               >
                 <PlusCircle size={18} />
-                <span>{activeTab === 'groups' ? 'Tambah Kelompok' : 'Input Nilai'}</span>
+                <span>
+                  {activeTab === 'groups' ? 'Tambah Kelompok' : 
+                   activeTab === 'subjects' ? 'Tambah Perlombaan' : 
+                   'Input Nilai'}
+                </span>
               </button>
           </div>
         </header>
@@ -737,12 +822,12 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                               const res = await fetch(`/api/seed${month ? `?month=${month}` : ''}`, { method: 'POST' });
                               if (res.ok) {
                                 fetchData();
-                                alert('Data kelompok berhasil di-seed!');
+                                setAlertModal({ isOpen: true, title: 'Sukses', message: 'Data kelompok berhasil di-seed!' });
                               } else {
-                                alert('Gagal seeding data. Pastikan Firebase sudah dikonfigurasi.');
+                                setAlertModal({ isOpen: true, title: 'Gagal', message: 'Gagal seeding data. Pastikan Firebase sudah dikonfigurasi.' });
                               }
                             } catch (e) {
-                              alert('Error saat seeding data.');
+                              setAlertModal({ isOpen: true, title: 'Error', message: 'Error saat seeding data.' });
                             }
                           }}
                           className="mt-4 text-xs font-bold text-brand-600 hover:underline flex items-center gap-1"
@@ -988,6 +1073,78 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                                   className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all"
                                 >
                                   <MoreVertical size={18} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'subjects' && (
+                <motion.div 
+                  key="subjects"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+                >
+                  <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input 
+                          type="text" 
+                          placeholder="Cari perlombaan..." 
+                          className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all w-full sm:w-64"
+                        />
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setIsAddingSubject(true)}
+                      className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-brand-200"
+                    >
+                      <Plus size={20} />
+                      Tambah Perlombaan
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
+                          <th className="px-6 py-4">ID</th>
+                          <th className="px-6 py-4">Nama Perlombaan</th>
+                          <th className="px-6 py-4">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {(Array.isArray(subjects) ? subjects : []).map((s) => (
+                          <tr key={s.id} className="hover:bg-slate-50/50 transition-colors group">
+                            <td className="px-6 py-4 text-sm font-mono text-slate-400">#{s.id.toString().slice(-4)}</td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-slate-700 font-bold text-sm">
+                                  {s.name.charAt(0)}
+                                </div>
+                                <span className="text-sm font-bold text-slate-900">{s.name}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteSubject(s.id);
+                                  }}
+                                  className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all cursor-pointer z-30"
+                                  title="Hapus Perlombaan"
+                                >
+                                  <Trash2 size={18} />
                                 </button>
                               </div>
                             </td>
@@ -1329,13 +1486,15 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                     <div>
                       <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Perlombaan</label>
                       <select 
+                        required
                         value={newAssessment.subject}
                         onChange={(e) => setNewAssessment({...newAssessment, subject: e.target.value})}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
                       >
-                        <option>Merpati Ekor Kata</option>
-                        <option>Fashion Show</option>
-                        <option>Bonus</option>
+                        <option value="">Pilih Perlombaan...</option>
+                        {(Array.isArray(subjects) ? subjects : []).map(s => (
+                          <option key={s.id} value={s.name}>{s.name}</option>
+                        ))}
                       </select>
                     </div>
                     {newAssessment.subject !== 'Fashion Show' && (
@@ -1580,6 +1739,57 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
           </div>
         )}
 
+        {isAddingSubject && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsAddingSubject(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
+            >
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-xl font-bold text-slate-900">Tambah Perlombaan Baru</h3>
+                  <button 
+                    onClick={() => setIsAddingSubject(false)}
+                    className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
+                  >
+                    <PlusCircle className="rotate-45" size={24} />
+                  </button>
+                </div>
+
+                <form onSubmit={handleAddSubject} className="space-y-6">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nama Perlombaan</label>
+                    <input 
+                      type="text" 
+                      required
+                      placeholder="Masukkan nama perlombaan..."
+                      value={newSubject.name}
+                      onChange={(e) => setNewSubject({...newSubject, name: e.target.value})}
+                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                    />
+                  </div>
+
+                  <button 
+                    type="submit"
+                    className="w-full bg-slate-900 hover:bg-slate-800 text-white py-4 rounded-2xl font-bold transition-all shadow-lg shadow-slate-900/20 active:scale-95 mt-4"
+                  >
+                    Tambahkan Perlombaan
+                  </button>
+                </form>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
         {isQrModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <motion.div 
@@ -1766,6 +1976,92 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                     </div>
                   );
                 })()}
+              </div>
+            </motion.div>
+          </div>
+        )}
+        {confirmModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setConfirmModal(null)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+            >
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <h3 className="text-xl font-bold text-slate-900">{confirmModal.title}</h3>
+                <button
+                  onClick={() => setConfirmModal(null)}
+                  className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
+                >
+                  <PlusCircle className="rotate-45" size={24} />
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-slate-600">{confirmModal.message}</p>
+              </div>
+              <div className="p-6 border-t border-slate-100 flex justify-end gap-3">
+                <button
+                  onClick={() => setConfirmModal(null)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  onClick={() => {
+                    confirmModal.onConfirm();
+                    setConfirmModal(null);
+                  }}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold transition-colors"
+                >
+                  Hapus
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {alertModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setAlertModal(null)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+            >
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
+                <h3 className="text-xl font-bold text-slate-900">{alertModal.title}</h3>
+                <button
+                  onClick={() => setAlertModal(null)}
+                  className="p-2 hover:bg-slate-100 rounded-xl transition-colors text-slate-400"
+                >
+                  <PlusCircle className="rotate-45" size={24} />
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-slate-600">{alertModal.message}</p>
+              </div>
+              <div className="p-6 border-t border-slate-100 flex justify-end">
+                <button
+                  onClick={() => setAlertModal(null)}
+                  className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold transition-colors"
+                >
+                  Tutup
+                </button>
               </div>
             </motion.div>
           </div>

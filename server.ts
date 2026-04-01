@@ -332,6 +332,71 @@ app.delete("/api/groups/:id", async (req, res) => {
   }
 });
 
+// Subjects Endpoints
+app.get("/api/subjects", async (req, res) => {
+  if (!db) return res.status(500).json({ 
+    error: "Database not initialized", 
+    details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
+  });
+  try {
+    const subjectsCol = getCollectionName("subjects", req);
+    const subjectsSnapshot = await db.collection(subjectsCol).get();
+    
+    const subjects = subjectsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    
+    res.json(subjects);
+  } catch (error: any) {
+    console.error("Subjects error:", error);
+    res.status(500).json({ 
+      error: "Failed to fetch subjects", 
+      message: error.message 
+    });
+  }
+});
+
+app.post("/api/subjects", async (req, res) => {
+  if (!db) return res.status(500).json({ 
+    error: "Database not initialized", 
+    details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
+  });
+  try {
+    const subjectsCol = getCollectionName("subjects", req);
+    const { name, weight } = req.body;
+    const docRef = await db.collection(subjectsCol).add({
+      name,
+      weight: Number(weight) || 1
+    });
+    res.json({ id: docRef.id });
+  } catch (error: any) {
+    console.error("Subjects POST error:", error);
+    res.status(500).json({ 
+      error: "Failed to add subject", 
+      message: error.message 
+    });
+  }
+});
+
+app.delete("/api/subjects/:id", async (req, res) => {
+  if (!db) return res.status(500).json({ 
+    error: "Database not initialized", 
+    details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
+  });
+  try {
+    const subjectsCol = getCollectionName("subjects", req);
+    await db.collection(subjectsCol).doc(req.params.id).delete();
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Delete subject error:", error);
+    res.status(500).json({ 
+      error: "Failed to delete subject", 
+      message: error.message 
+    });
+  }
+});
+
 // Settings Endpoints
 app.get("/api/settings/qr-status", async (req, res) => {
   if (!db) return res.status(500).json({ error: "Database not initialized" });
