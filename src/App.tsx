@@ -9,6 +9,10 @@ export default function App() {
       <Routes>
         <Route path="/" element={<AdminDashboard />} />
         <Route path="/judge/fashion-show" element={<JudgeView />} />
+        
+        <Route path="/april" element={<AdminDashboard month="april" />} />
+        <Route path="/april/judge/fashion-show" element={<JudgeView month="april" />} />
+        
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

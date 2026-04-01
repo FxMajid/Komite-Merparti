@@ -8,7 +8,11 @@ interface Group {
   name: string;
 }
 
-export default function JudgeView() {
+interface JudgeViewProps {
+  month?: string;
+}
+
+export default function JudgeView({ month }: JudgeViewProps) {
   const [searchParams] = useSearchParams();
   const [judgeName, setJudgeName] = useState('');
   // Get role from URL, default to 'Juri' if not present or invalid
@@ -82,7 +86,7 @@ export default function JudgeView() {
 
   const fetchGroups = async () => {
     try {
-      const res = await fetch('/api/groups');
+      const res = await fetch(`/api/groups${month ? `?month=${month}` : ''}`);
       if (res.ok) {
         const data = await res.json();
         setGroups(data);
@@ -127,7 +131,7 @@ export default function JudgeView() {
       const promises = selectedGroupIds.map(async (groupId) => {
         const finalScore = calculateAverage(groupId);
         
-        return fetch('/api/assessments', {
+        return fetch(`/api/assessments${month ? `?month=${month}` : ''}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -244,7 +248,7 @@ export default function JudgeView() {
               <div className="p-2 bg-white/10 rounded-xl">
                 <Trophy size={24} />
               </div>
-              <h1 className="text-xl font-bold">Penilaian Fashion Show</h1>
+              <h1 className="text-xl font-bold">Penilaian Fashion Show {month === 'april' ? '(April)' : ''}</h1>
             </div>
             <p className="text-slate-400 text-sm">Silakan berikan penilaian objektif untuk kelompok yang terpilih.</p>
           </div>

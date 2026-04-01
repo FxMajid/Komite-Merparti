@@ -51,6 +51,14 @@ if (!admin.apps.length) {
 const app = express();
 app.use(express.json());
 
+const getCollectionName = (baseName: string, req: express.Request) => {
+  const month = req.query.month;
+  if (month === 'april') {
+    return `${baseName}_april`;
+  }
+  return baseName;
+};
+
 // API Routes
 app.get("/api/summary", async (req, res) => {
   if (!db) return res.status(500).json({ 
@@ -58,8 +66,10 @@ app.get("/api/summary", async (req, res) => {
     details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
   });
   try {
-    const assessmentsSnapshot = await db.collection("assessments").get();
-    const groupsSnapshot = await db.collection("groups").get();
+    const assessmentsCol = getCollectionName("assessments", req);
+    const groupsCol = getCollectionName("groups", req);
+    const assessmentsSnapshot = await db.collection(assessmentsCol).get();
+    const groupsSnapshot = await db.collection(groupsCol).get();
     
     const assessments = assessmentsSnapshot.docs.map(doc => doc.data());
     const totalGroups = groupsSnapshot.size;
@@ -129,8 +139,10 @@ app.get("/api/groups", async (req, res) => {
     details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
   });
   try {
-    const groupsSnapshot = await db.collection("groups").get();
-    const assessmentsSnapshot = await db.collection("assessments").get();
+    const groupsCol = getCollectionName("groups", req);
+    const assessmentsCol = getCollectionName("assessments", req);
+    const groupsSnapshot = await db.collection(groupsCol).get();
+    const assessmentsSnapshot = await db.collection(assessmentsCol).get();
     
     const assessments = assessmentsSnapshot.docs.map(doc => doc.data());
     
@@ -160,8 +172,10 @@ app.get("/api/assessments", async (req, res) => {
     details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
   });
   try {
-    const assessmentsSnapshot = await db.collection("assessments").orderBy("date", "desc").get();
-    const groupsSnapshot = await db.collection("groups").get();
+    const assessmentsCol = getCollectionName("assessments", req);
+    const groupsCol = getCollectionName("groups", req);
+    const assessmentsSnapshot = await db.collection(assessmentsCol).orderBy("date", "desc").get();
+    const groupsSnapshot = await db.collection(groupsCol).get();
     
     const groupsMap: Record<string, any> = {};
     groupsSnapshot.docs.forEach(doc => {
@@ -194,8 +208,9 @@ app.post("/api/assessments", async (req, res) => {
     details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
   });
   try {
+    const assessmentsCol = getCollectionName("assessments", req);
     const { group_id, subject, score, notes, criteria, role } = req.body;
-    const docRef = await db.collection("assessments").add({
+    const docRef = await db.collection(assessmentsCol).add({
       group_id,
       subject,
       score: Number(score),
@@ -220,6 +235,7 @@ app.put("/api/assessments/:id", async (req, res) => {
     details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
   });
   try {
+    const assessmentsCol = getCollectionName("assessments", req);
     const { group_id, subject, score, notes, criteria } = req.body;
     
     const updateData: any = {
@@ -231,7 +247,7 @@ app.put("/api/assessments/:id", async (req, res) => {
     if (subject) updateData.subject = subject;
     if (criteria !== undefined) updateData.criteria = criteria;
 
-    await db.collection("assessments").doc(req.params.id).update(updateData);
+    await db.collection(assessmentsCol).doc(req.params.id).update(updateData);
     res.json({ success: true });
   } catch (error: any) {
     console.error("Update assessment error:", error);
@@ -248,7 +264,8 @@ app.delete("/api/assessments/:id", async (req, res) => {
     details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
   });
   try {
-    await db.collection("assessments").doc(req.params.id).delete();
+    const assessmentsCol = getCollectionName("assessments", req);
+    await db.collection(assessmentsCol).doc(req.params.id).delete();
     res.json({ success: true });
   } catch (error: any) {
     console.error("Delete assessment error:", error);
@@ -265,8 +282,9 @@ app.post("/api/groups", async (req, res) => {
     details: "Check FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, and FIREBASE_PRIVATE_KEY in Vercel Settings" 
   });
   try {
+    const groupsCol = getCollectionName("groups", req);
     const { name } = req.body;
-    const docRef = await db.collection("groups").add({
+    const docRef = await db.collection(groupsCol).add({
       name
     });
     res.json({ id: docRef.id });
@@ -286,16 +304,18 @@ app.delete("/api/groups/:id", async (req, res) => {
     return res.status(500).json({ error: "Database not initialized" });
   }
   try {
+    const groupsCol = getCollectionName("groups", req);
+    const assessmentsCol = getCollectionName("assessments", req);
     const { id } = req.params;
     if (!id) {
       return res.status(400).json({ error: "Group ID is required" });
     }
     
-    await db.collection("groups").doc(id).delete();
+    await db.collection(groupsCol).doc(id).delete();
     console.log("Group deleted from Firestore:", id);
     
     // Also delete assessments associated with this group
-    const assessmentsSnapshot = await db.collection("assessments").where("group_id", "==", id).get();
+    const assessmentsSnapshot = await db.collection(assessmentsCol).where("group_id", "==", id).get();
     console.log(`Found ${assessmentsSnapshot.size} assessments to delete for group ${id}`);
     
     const batch = db.batch();
@@ -343,7 +363,7 @@ app.post("/api/settings/qr-status", async (req, res) => {
 });
 
 // Seed Groups Function
-async function seedGroups() {
+async function seedGroups(month?: string) {
   if (!db) return;
   const groupsToSeed = [
     "KETUPAT", "OPOR", "MUDIK", "THR", 
@@ -351,15 +371,16 @@ async function seedGroups() {
   ];
   
   try {
-    const groupsSnapshot = await db.collection("groups").get();
+    const groupsCol = month === 'april' ? "groups_april" : "groups";
+    const groupsSnapshot = await db.collection(groupsCol).get();
     const existingNames = groupsSnapshot.docs.map(doc => doc.data().name);
     
     for (const name of groupsToSeed) {
       if (!existingNames.includes(name)) {
-        await db.collection("groups").add({
+        await db.collection(groupsCol).add({
           name
         });
-        console.log(`Seeded group: ${name}`);
+        console.log(`Seeded group: ${name} to ${groupsCol}`);
       }
     }
   } catch (error) {
@@ -370,7 +391,7 @@ async function seedGroups() {
 // Manual Seed Endpoint
 app.post("/api/seed", async (req, res) => {
   if (!db) return res.status(500).json({ error: "Database not initialized" });
-  await seedGroups();
+  await seedGroups(req.query.month as string);
   res.json({ message: "Seeding triggered" });
 });
 

@@ -83,7 +83,11 @@ interface Summary {
   }[];
 }
 
-export default function AdminDashboard() {
+interface AdminDashboardProps {
+  month?: string;
+}
+
+export default function AdminDashboard({ month }: AdminDashboardProps) {
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
@@ -251,9 +255,9 @@ export default function AdminDashboard() {
     setLoading(true);
     try {
       const [groupsRes, assessmentsRes, summaryRes] = await Promise.all([
-        fetch('/api/groups'),
-        fetch('/api/assessments'),
-        fetch('/api/summary')
+        fetch(`/api/groups${month ? `?month=${month}` : ''}`),
+        fetch(`/api/assessments${month ? `?month=${month}` : ''}`),
+        fetch(`/api/summary${month ? `?month=${month}` : ''}`)
       ]);
       
       if (groupsRes.ok && assessmentsRes.ok && summaryRes.ok) {
@@ -297,7 +301,7 @@ export default function AdminDashboard() {
         criteriaData = newAssessment.criteria;
       }
 
-      const res = await fetch('/api/assessments', {
+      const res = await fetch(`/api/assessments${month ? `?month=${month}` : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -341,7 +345,7 @@ export default function AdminDashboard() {
         criteriaData = editingAssessment.criteria;
       }
 
-      const res = await fetch(`/api/assessments/${editingAssessment.id}`, {
+      const res = await fetch(`/api/assessments/${editingAssessment.id}${month ? `?month=${month}` : ''}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -362,7 +366,7 @@ export default function AdminDashboard() {
   const handleDeleteAssessment = async (id: string) => {
     if (!confirm('Apakah Anda yakin ingin menghapus penilaian ini?')) return;
     try {
-      const res = await fetch(`/api/assessments/${id}`, {
+      const res = await fetch(`/api/assessments/${id}${month ? `?month=${month}` : ''}`, {
         method: 'DELETE'
       });
       if (res.ok) {
@@ -376,7 +380,7 @@ export default function AdminDashboard() {
   const handleAddGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/groups', {
+      const res = await fetch(`/api/groups${month ? `?month=${month}` : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newGroup)
@@ -395,7 +399,7 @@ export default function AdminDashboard() {
     console.log("Attempting to delete group with ID:", id);
     if (window.confirm('Apakah Anda yakin ingin menghapus kelompok ini? Semua data penilaian terkait juga akan dihapus.')) {
       try {
-        const res = await fetch(`/api/groups/${id}`, {
+        const res = await fetch(`/api/groups/${id}${month ? `?month=${month}` : ''}`, {
           method: 'DELETE'
         });
         if (res.ok) {
@@ -496,8 +500,28 @@ export default function AdminDashboard() {
             </div>
             <div>
               <h1 className="font-bold text-slate-900 leading-tight">EduScore</h1>
-              <p className="text-xs text-slate-500 font-medium">Sistem Penilaian</p>
+              <p className="text-xs text-slate-500 font-medium">Sistem Penilaian {month === 'april' ? '(April)' : ''}</p>
             </div>
+          </div>
+          <div className="mt-4 flex bg-slate-100 p-1 rounded-lg">
+            <button 
+              onClick={() => window.location.href = '/'}
+              className={cn(
+                "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
+                !month ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              Utama
+            </button>
+            <button 
+              onClick={() => window.location.href = '/april'}
+              className={cn(
+                "flex-1 text-xs font-semibold py-1.5 rounded-md transition-all",
+                month === 'april' ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              April
+            </button>
           </div>
         </div>
 
@@ -710,7 +734,7 @@ export default function AdminDashboard() {
                         <button 
                           onClick={async () => {
                             try {
-                              const res = await fetch('/api/seed', { method: 'POST' });
+                              const res = await fetch(`/api/seed${month ? `?month=${month}` : ''}`, { method: 'POST' });
                               if (res.ok) {
                                 fetchData();
                                 alert('Data kelompok berhasil di-seed!');
@@ -938,7 +962,7 @@ export default function AdminDashboard() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setQrData({
-                                      url: `${window.location.origin}/judge/fashion-show?group_id=${g.id}`,
+                                      url: `${window.location.origin}${month ? `/${month}` : ''}/judge/fashion-show?group_id=${g.id}`,
                                       title: `Scan untuk Menilai ${g.name}`,
                                       desc: `Scan QR Code ini untuk langsung menilai kelompok ${g.name}.`
                                     });
@@ -1620,7 +1644,7 @@ export default function AdminDashboard() {
                 <button 
                   disabled={selectedQrGroups.length === 0}
                   onClick={() => {
-                    const url = `${window.location.origin}/judge/fashion-show?role=${qrRole}&group_id=${selectedQrGroups.join(',')}`;
+                    const url = `${window.location.origin}${month ? `/${month}` : ''}/judge/fashion-show?role=${qrRole}&group_id=${selectedQrGroups.join(',')}`;
                     setQrData({
                       url,
                       title: `QR Code ${qrRole}`,
