@@ -137,7 +137,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
 
   const fetchQrStatus = async () => {
     try {
-      const res = await fetch('/api/settings/qr-status');
+      const res = await fetch(`/api/settings/qr-status${month ? `?month=${month}` : ''}`);
       if (res.ok) {
         const data = await res.json();
         setQrStatus(data);
@@ -151,7 +151,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
     const newStatus = { ...qrStatus, [role]: !qrStatus[role] };
     setQrStatus(newStatus);
     try {
-      await fetch('/api/settings/qr-status', {
+      await fetch(`/api/settings/qr-status${month ? `?month=${month}` : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newStatus)
@@ -319,8 +319,14 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (isLoggedIn) {
+      if (userRole === 'user' && month !== 'april') {
+        // Do not fetch data, wait for redirect
+        return;
+      }
+      fetchData();
+    }
+  }, [isLoggedIn, month, userRole]);
 
   const handleAddAssessment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -566,6 +572,14 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
             </form>
           </div>
         </motion.div>
+      </div>
+    );
+  }
+
+  if (userRole === 'user' && month !== 'april') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="w-8 h-8 border-4 border-brand-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }

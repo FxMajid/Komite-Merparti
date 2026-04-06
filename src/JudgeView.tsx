@@ -43,7 +43,7 @@ export default function JudgeView({ month }: JudgeViewProps) {
 
   const checkAccess = async () => {
     try {
-      const res = await fetch('/api/settings/qr-status');
+      const res = await fetch(`/api/settings/qr-status${month ? `?month=${month}` : ''}`);
       if (res.ok) {
         const status = await res.json();
         if (role === 'Juri' && !status.juri) {

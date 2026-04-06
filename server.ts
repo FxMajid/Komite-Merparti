@@ -401,11 +401,12 @@ app.delete("/api/subjects/:id", async (req, res) => {
 app.get("/api/settings/qr-status", async (req, res) => {
   if (!db) return res.status(500).json({ error: "Database not initialized" });
   try {
-    const doc = await db.collection("settings").doc("qr_status").get();
+    const docId = req.query.month === 'april' ? "qr_status_april" : "qr_status";
+    const doc = await db.collection("settings").doc(docId).get();
     if (!doc.exists) {
       // Default to true if not set
       const defaultStatus = { juri: true, peserta: true };
-      await db.collection("settings").doc("qr_status").set(defaultStatus);
+      await db.collection("settings").doc(docId).set(defaultStatus);
       return res.json(defaultStatus);
     }
     res.json(doc.data());
@@ -418,8 +419,9 @@ app.get("/api/settings/qr-status", async (req, res) => {
 app.post("/api/settings/qr-status", async (req, res) => {
   if (!db) return res.status(500).json({ error: "Database not initialized" });
   try {
+    const docId = req.query.month === 'april' ? "qr_status_april" : "qr_status";
     const { juri, peserta } = req.body;
-    await db.collection("settings").doc("qr_status").set({ juri, peserta }, { merge: true });
+    await db.collection("settings").doc(docId).set({ juri, peserta }, { merge: true });
     res.json({ success: true, juri, peserta });
   } catch (error: any) {
     console.error("Update QR status error:", error);
@@ -430,13 +432,16 @@ app.post("/api/settings/qr-status", async (req, res) => {
 // Seed Groups Function
 async function seedGroups(month?: string) {
   if (!db) return;
+  // Do not seed default groups for April
+  if (month === 'april') return;
+
   const groupsToSeed = [
     "KETUPAT", "OPOR", "MUDIK", "THR", 
     "NYEPI", "HENING", "BALI", "CATUR"
   ];
   
   try {
-    const groupsCol = month === 'april' ? "groups_april" : "groups";
+    const groupsCol = "groups";
     const groupsSnapshot = await db.collection(groupsCol).get();
     const existingNames = groupsSnapshot.docs.map(doc => doc.data().name);
     
@@ -458,6 +463,29 @@ app.post("/api/seed", async (req, res) => {
   if (!db) return res.status(500).json({ error: "Database not initialized" });
   await seedGroups(req.query.month as string);
   res.json({ message: "Seeding triggered" });
+});
+
+// Clear April Endpoint
+app.post("/api/clear-april", async (req, res) => {
+  if (!db) return res.status(500).json({ error: "Database not initialized" });
+  try {
+    const batch = db.batch();
+    
+    const groupsSnapshot = await db.collection("groups_april").get();
+    groupsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+    
+    const assessmentsSnapshot = await db.collection("assessments_april").get();
+    assessmentsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+    
+    const subjectsSnapshot = await db.collection("subjects_april").get();
+    subjectsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+    
+    await batch.commit();
+    res.json({ message: "April data cleared successfully" });
+  } catch (error: any) {
+    console.error("Failed to clear April data:", error);
+    res.status(500).json({ error: "Failed to clear April data", message: error.message });
+  }
 });
 
 // Debug endpoint
