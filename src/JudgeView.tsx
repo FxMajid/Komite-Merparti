@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, AlertCircle, Send, User, Users, Star, Trophy, UserCircle2, Lock } from 'lucide-react';
 
@@ -13,6 +13,7 @@ interface JudgeViewProps {
 }
 
 export default function JudgeView({ month }: JudgeViewProps) {
+  const { subject } = useParams<{ subject: string }>();
   const [searchParams] = useSearchParams();
   const [judgeName, setJudgeName] = useState('');
   // Get role from URL, default to 'Juri' if not present or invalid
@@ -41,6 +42,8 @@ export default function JudgeView({ month }: JudgeViewProps) {
     checkAccess();
   }, [role]);
 
+  const decodedSubject = subject ? decodeURIComponent(subject) : 'Fashion Show';
+
   const checkAccess = async () => {
     try {
       const res = await fetch(`/api/settings/qr-status${month ? `?month=${month}` : ''}`);
@@ -65,19 +68,24 @@ export default function JudgeView({ month }: JudgeViewProps) {
     if (isAccessAllowed) {
       fetchGroups();
       const groupParam = searchParams.get('group_id');
+      const criteriaParam = searchParams.get('criteria');
+      
       if (groupParam) {
         const ids = groupParam.split(',').filter(id => id.trim() !== '');
         setSelectedGroupIds(ids);
         
+        // Parse criteria from URL or fallback to default
+        const criteriaNames = criteriaParam 
+          ? decodeURIComponent(criteriaParam).split(',') 
+          : ['Kesesuaian dengan tema', 'Kreativitas', 'Kelengkapan Kelompok', 'Ekspresi/Gaya'];
+        
         // Initialize criteria for these groups
         const initialCriteria: Record<string, Record<string, number>> = {};
         ids.forEach(id => {
-          initialCriteria[id] = {
-            'Kesesuaian dengan tema': 0,
-            'Kreativitas': 0,
-            'Kelengkapan Kelompok': 0,
-            'Ekspresi/Gaya': 0
-          };
+          initialCriteria[id] = {};
+          criteriaNames.forEach(c => {
+            initialCriteria[id][c] = 0;
+          });
         });
         setCriteria(initialCriteria);
       }
@@ -136,7 +144,7 @@ export default function JudgeView({ month }: JudgeViewProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             group_id: groupId,
-            subject: 'Fashion Show',
+            subject: decodedSubject,
             score: finalScore,
             notes: `Dinilai oleh ${role}: ${judgeName}`,
             criteria: criteria[groupId],
@@ -152,14 +160,17 @@ export default function JudgeView({ month }: JudgeViewProps) {
         setSuccess(true);
         setJudgeName('');
         // Reset criteria
+        const criteriaParam = searchParams.get('criteria');
+        const criteriaNames = criteriaParam 
+          ? decodeURIComponent(criteriaParam).split(',') 
+          : ['Kesesuaian dengan tema', 'Kreativitas', 'Kelengkapan Kelompok', 'Ekspresi/Gaya'];
+          
         const resetCriteria: Record<string, Record<string, number>> = {};
         selectedGroupIds.forEach(id => {
-          resetCriteria[id] = {
-            'Kesesuaian dengan tema': 0,
-            'Kreativitas': 0,
-            'Kelengkapan Kelompok': 0,
-            'Ekspresi/Gaya': 0
-          };
+          resetCriteria[id] = {};
+          criteriaNames.forEach(c => {
+            resetCriteria[id][c] = 0;
+          });
         });
         setCriteria(resetCriteria);
       } else {
@@ -209,7 +220,7 @@ export default function JudgeView({ month }: JudgeViewProps) {
             <CheckCircle2 size={40} />
           </div>
           <h2 className="text-2xl font-bold text-slate-900 mb-2">Penilaian Terkirim!</h2>
-          <p className="text-slate-500 mb-8">Terima kasih atas penilaian Anda untuk Fashion Show ini.</p>
+          <p className="text-slate-500 mb-8">Terima kasih atas penilaian Anda untuk {decodedSubject} ini.</p>
         </motion.div>
       </div>
     );
@@ -248,7 +259,7 @@ export default function JudgeView({ month }: JudgeViewProps) {
               <div className="p-2 bg-white/10 rounded-xl">
                 <Trophy size={24} />
               </div>
-              <h1 className="text-xl font-bold">Penilaian Fashion Show {month === 'april' ? '(April)' : ''}</h1>
+              <h1 className="text-xl font-bold">Penilaian {decodedSubject} {month === 'april' ? '(April)' : ''}</h1>
             </div>
             <p className="text-slate-400 text-sm">Silakan berikan penilaian objektif untuk kelompok yang terpilih.</p>
           </div>

@@ -89,28 +89,30 @@ app.get("/api/summary", async (req, res) => {
 
     const averageScore = totalAssessments > 0 ? totalScore / totalAssessments : 0;
     
-    // Calculate criteria averages for Fashion Show
-    const fashionShowCriteria: Record<string, { total: number; count: number }> = {
-      'Kesesuaian dengan tema': { total: 0, count: 0 },
-      'Kreativitas': { total: 0, count: 0 },
-      'Kelengkapan Kelompok': { total: 0, count: 0 },
-      'Ekspresi/Gaya': { total: 0, count: 0 }
-    };
+    // Calculate criteria averages dynamically for all subjects
+    const criteriaStats: Record<string, Record<string, { total: number; count: number }>> = {};
 
     assessments.forEach(a => {
-      if (a.subject === 'Fashion Show' && a.criteria) {
+      if (a.criteria && Object.keys(a.criteria).length > 0) {
+        if (!criteriaStats[a.subject]) {
+          criteriaStats[a.subject] = {};
+        }
         Object.entries(a.criteria).forEach(([key, val]) => {
-          if (fashionShowCriteria[key]) {
-            fashionShowCriteria[key].total += Number(val);
-            fashionShowCriteria[key].count += 1;
+          if (!criteriaStats[a.subject][key]) {
+            criteriaStats[a.subject][key] = { total: 0, count: 0 };
           }
+          criteriaStats[a.subject][key].total += Number(val);
+          criteriaStats[a.subject][key].count += 1;
         });
       }
     });
 
-    const fashionShowStats = Object.entries(fashionShowCriteria).map(([name, data]) => ({
-      name,
-      avg: data.count > 0 ? data.total / data.count : 0
+    const formattedCriteriaStats = Object.entries(criteriaStats).map(([subject, criteria]) => ({
+      subject,
+      criteria: Object.entries(criteria).map(([name, data]) => ({
+        name,
+        avg: data.count > 0 ? data.total / data.count : 0
+      }))
     }));
 
     const subjectStats = Object.entries(subjectScores).map(([subject, data]) => ({
@@ -121,7 +123,7 @@ app.get("/api/summary", async (req, res) => {
     res.json({ 
       stats: { totalGroups, averageScore, totalAssessments }, 
       subjectStats,
-      fashionShowStats
+      criteriaStats: formattedCriteriaStats
     });
   } catch (error: any) {
     console.error("Summary error:", error);
@@ -394,6 +396,47 @@ app.delete("/api/subjects/:id", async (req, res) => {
       error: "Failed to delete subject", 
       message: error.message 
     });
+  }
+});
+
+// Criteria Endpoints
+app.get("/api/criteria", async (req, res) => {
+  if (!db) return res.status(500).json({ error: "Database not initialized" });
+  try {
+    const criteriaCol = getCollectionName("criteria", req);
+    const snapshot = await db.collection(criteriaCol).orderBy("createdAt", "asc").get();
+    const criteria = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json(criteria);
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to fetch criteria", message: error.message });
+  }
+});
+
+app.post("/api/criteria", async (req, res) => {
+  if (!db) return res.status(500).json({ error: "Database not initialized" });
+  try {
+    const criteriaCol = getCollectionName("criteria", req);
+    const { name, subject } = req.body;
+    const newCriterion = {
+      name,
+      subject: subject || 'Fashion Show',
+      createdAt: admin.firestore.FieldValue.serverTimestamp()
+    };
+    const docRef = await db.collection(criteriaCol).add(newCriterion);
+    res.json({ id: docRef.id, ...newCriterion });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to add criterion", message: error.message });
+  }
+});
+
+app.delete("/api/criteria/:id", async (req, res) => {
+  if (!db) return res.status(500).json({ error: "Database not initialized" });
+  try {
+    const criteriaCol = getCollectionName("criteria", req);
+    await db.collection(criteriaCol).doc(req.params.id).delete();
+    res.json({ success: true });
+  } catch (error: any) {
+    res.status(500).json({ error: "Failed to delete criterion", message: error.message });
   }
 });
 

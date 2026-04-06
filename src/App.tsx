@@ -8,10 +8,10 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<AdminDashboard />} />
-        <Route path="/judge/fashion-show" element={<JudgeView />} />
+        <Route path="/judge/:subject" element={<JudgeView />} />
         
         <Route path="/april" element={<AdminDashboard month="april" />} />
-        <Route path="/april/judge/fashion-show" element={<JudgeView month="april" />} />
+        <Route path="/april/judge/:subject" element={<JudgeView month="april" />} />
         
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

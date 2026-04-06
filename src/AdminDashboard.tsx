@@ -27,7 +27,8 @@ import {
   Medal,
   Crown,
   Settings,
-  Save
+  Save,
+  ListChecks
 } from 'lucide-react';
 import QRCode from "react-qr-code";
 import { 
@@ -80,9 +81,12 @@ interface Summary {
     subject: string;
     avgScore: number;
   }[];
-  fashionShowStats?: {
-    name: string;
-    avg: number;
+  criteriaStats?: {
+    subject: string;
+    criteria: {
+      name: string;
+      avg: number;
+    }[];
   }[];
 }
 
@@ -101,11 +105,12 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
   const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || '');
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'assessments' | 'ranking' | 'subjects' | 'formula'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'assessments' | 'ranking' | 'subjects' | 'formula' | 'criteria'>('overview');
   const [qrData, setQrData] = useState<{url: string, title: string, desc: string} | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
+  const [criteriaList, setCriteriaList] = useState<{id: string, name: string, subject: string}[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [dbStatus, setDbStatus] = useState<'connected' | 'error' | 'loading'>('loading');
   const [dbError, setDbError] = useState<string>('');
@@ -123,6 +128,8 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [qrRole, setQrRole] = useState<'Juri' | 'Peserta'>('Juri');
   const [selectedQrGroups, setSelectedQrGroups] = useState<string[]>([]);
+  const [selectedQrCriteria, setSelectedQrCriteria] = useState<string[]>([]);
+  const [selectedQrSubject, setSelectedQrSubject] = useState<string>('Fashion Show');
 
   const [isAddingGroup, setIsAddingGroup] = useState(false);
   const [isAddingSubject, setIsAddingSubject] = useState(false);
@@ -184,13 +191,24 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
     subject: 'Merpati Ekor Kata',
     score: 80,
     notes: '',
-    criteria: {
-      'Kesesuaian dengan tema': 0,
-      'Kreativitas': 0,
-      'Kelengkapan Kelompok': 0,
-      'Ekspresi/Gaya': 0
-    }
+    criteria: {}
   });
+
+  // Update criteria when subject changes
+  useEffect(() => {
+    if (newAssessment.subject) {
+      const subjectCriteria = criteriaList.filter(c => c.subject === newAssessment.subject);
+      if (subjectCriteria.length > 0) {
+        const initialCriteria: Record<string, number> = {};
+        subjectCriteria.forEach(c => {
+          initialCriteria[c.name] = 0;
+        });
+        setNewAssessment(prev => ({ ...prev, criteria: initialCriteria }));
+      } else {
+        setNewAssessment(prev => ({ ...prev, criteria: {} }));
+      }
+    }
+  }, [newAssessment.subject, criteriaList]);
 
   const [newGroup, setNewGroup] = useState({
     name: ''
@@ -300,26 +318,29 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [groupsRes, assessmentsRes, summaryRes, subjectsRes, formulaRes] = await Promise.all([
+      const [groupsRes, assessmentsRes, summaryRes, subjectsRes, formulaRes, criteriaRes] = await Promise.all([
         fetch(`/api/groups${month ? `?month=${month}` : ''}`),
         fetch(`/api/assessments${month ? `?month=${month}` : ''}`),
         fetch(`/api/summary${month ? `?month=${month}` : ''}`),
         fetch(`/api/subjects${month ? `?month=${month}` : ''}`),
-        fetch(`/api/settings/formula${month ? `?month=${month}` : ''}`)
+        fetch(`/api/settings/formula${month ? `?month=${month}` : ''}`),
+        fetch(`/api/criteria${month ? `?month=${month}` : ''}`)
       ]);
       
-      if (groupsRes.ok && assessmentsRes.ok && summaryRes.ok && subjectsRes.ok && formulaRes.ok) {
+      if (groupsRes.ok && assessmentsRes.ok && summaryRes.ok && subjectsRes.ok && formulaRes.ok && criteriaRes.ok) {
         const groupsData = await groupsRes.json();
         const assessmentsData = await assessmentsRes.json();
         const summaryData = await summaryRes.json();
         const subjectsData = await subjectsRes.json();
         const formulaData = await formulaRes.json();
+        const criteriaData = await criteriaRes.json();
         
         setGroups(groupsData);
         setAssessments(assessmentsData);
         setSummary(summaryData);
         setSubjects(subjectsData);
         setFormula(formulaData);
+        setCriteriaList(criteriaData);
         setDbStatus('connected');
         setDbError('');
       } else {
@@ -352,7 +373,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
       let finalScore = parseInt(newAssessment.score.toString());
       let criteriaData = null;
 
-      if (newAssessment.subject === 'Fashion Show') {
+      if (Object.keys(newAssessment.criteria).length > 0) {
         const scores = Object.values(newAssessment.criteria) as number[];
         const sum = scores.reduce((a, b) => a + b, 0);
         finalScore = Math.round(sum / scores.length);
@@ -375,12 +396,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
           subject: 'Merpati Ekor Kata', 
           score: 80, 
           notes: '',
-          criteria: {
-            'Kesesuaian dengan tema': 0,
-            'Kreativitas': 0,
-            'Kelengkapan Kelompok': 0,
-            'Ekspresi/Gaya': 0
-          }
+          criteria: {}
         });
         fetchData();
       }
@@ -396,7 +412,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
       let finalScore = parseInt(editingAssessment.score.toString());
       let criteriaData = null;
 
-      if (editingAssessment.subject === 'Fashion Show' && editingAssessment.criteria) {
+      if (editingAssessment.criteria && Object.keys(editingAssessment.criteria).length > 0) {
         const scores = Object.values(editingAssessment.criteria) as number[];
         const sum = scores.reduce((a, b) => a + b, 0);
         finalScore = Math.round(sum / scores.length);
@@ -738,6 +754,18 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
             <Settings size={20} />
             <span>Formula Penilaian</span>
           </button>
+          <button 
+            onClick={() => setActiveTab('criteria')}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
+              activeTab === 'criteria' 
+                ? "bg-brand-50 text-brand-700 font-semibold" 
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            )}
+          >
+            <ListChecks size={20} />
+            <span>Master Kriteria</span>
+          </button>
 
           <div className="pt-4 mt-4 border-t border-slate-100 space-y-2">
             <div className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 rounded-xl transition-all duration-200 group">
@@ -843,6 +871,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
               {activeTab === 'assessments' && 'Riwayat Penilaian'}
               {activeTab === 'ranking' && 'Ranking & Klasemen'}
               {activeTab === 'formula' && 'Formula Penilaian'}
+              {activeTab === 'criteria' && 'Master Kriteria Penilaian'}
             </h2>
             <p className="text-sm text-slate-500">Selamat datang kembali, Admin</p>
           </div>
@@ -955,6 +984,33 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
 
                   {/* Charts Section */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {summary?.criteriaStats?.map((stat, idx) => (
+                      <div key={idx} className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                        <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
+                          <Star size={18} className="text-brand-500" />
+                          Rata-rata Kriteria: {stat.subject}
+                        </h4>
+                        <div className="space-y-4">
+                          {stat.criteria.map((c, i) => (
+                            <div key={i}>
+                              <div className="flex justify-between text-sm mb-1">
+                                <span className="font-medium text-slate-600">{c.name}</span>
+                                <span className="font-bold text-slate-900">{c.avg.toFixed(1)}</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                <div 
+                                  className="bg-brand-500 h-2 rounded-full transition-all duration-1000"
+                                  style={{ width: `${(c.avg / 100) * 100}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                          {stat.criteria.length === 0 && (
+                            <p className="text-sm text-slate-500 text-center py-4">Belum ada data penilaian kriteria.</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
 
                   {/* Recent Activity */}
@@ -1137,11 +1193,9 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                                   type="button"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setQrData({
-                                      url: `${window.location.origin}${month ? `/${month}` : ''}/judge/fashion-show?group_id=${g.id}`,
-                                      title: `Scan untuk Menilai ${g.name}`,
-                                      desc: `Scan QR Code ini untuk langsung menilai kelompok ${g.name}.`
-                                    });
+                                    setQrRole('Juri');
+                                    setSelectedQrGroups([g.id]);
+                                    setIsQrModalOpen(true);
                                   }}
                                   className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-all cursor-pointer z-30"
                                   title="QR Code Kelompok"
@@ -1241,6 +1295,83 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                             </td>
                           </tr>
                         ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'criteria' && (
+                <motion.div 
+                  key="criteria"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
+                >
+                  <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-slate-900">Master Kriteria Penilaian</h3>
+                      <p className="text-sm text-slate-500">Atur kriteria apa saja yang akan dinilai pada saat generate QR.</p>
+                    </div>
+                    <button 
+                      onClick={() => {
+                        const name = prompt('Masukkan nama kriteria baru:');
+                        if (name) {
+                          const subject = prompt('Masukkan nama perlombaan untuk kriteria ini (misal: Fashion Show):', 'Fashion Show');
+                          if (subject) {
+                            fetch(`/api/criteria${month ? `?month=${month}` : ''}`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ name, subject })
+                            }).then(() => fetchData());
+                          }
+                        }
+                      }}
+                      className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-brand-200"
+                    >
+                      <Plus size={20} />
+                      Tambah Kriteria
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-wider font-bold">
+                          <th className="px-6 py-4">Perlombaan</th>
+                          <th className="px-6 py-4">Nama Kriteria</th>
+                          <th className="px-6 py-4">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {criteriaList.map((c) => (
+                          <tr key={c.id} className="hover:bg-slate-50/50 transition-colors group">
+                            <td className="px-6 py-4 text-sm font-bold text-slate-900">{c.subject}</td>
+                            <td className="px-6 py-4 text-sm text-slate-700">{c.name}</td>
+                            <td className="px-6 py-4">
+                              <button 
+                                type="button"
+                                onClick={() => {
+                                  if (confirm('Hapus kriteria ini?')) {
+                                    fetch(`/api/criteria/${c.id}${month ? `?month=${month}` : ''}`, { method: 'DELETE' })
+                                      .then(() => fetchData());
+                                  }
+                                }}
+                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {criteriaList.length === 0 && (
+                          <tr>
+                            <td colSpan={3} className="px-6 py-8 text-center text-slate-500">
+                              Belum ada kriteria. Silakan tambahkan kriteria baru.
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -1704,7 +1835,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                         ))}
                       </select>
                     </div>
-                    {newAssessment.subject !== 'Fashion Show' && (
+                    {Object.keys(newAssessment.criteria).length === 0 && (
                       <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nilai (0-100)</label>
                         <input 
@@ -1720,9 +1851,9 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                     )}
                   </div>
 
-                  {newAssessment.subject === 'Fashion Show' && (
+                  {Object.keys(newAssessment.criteria).length > 0 && (
                     <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
-                      <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Kriteria Penilaian Fashion Show</h5>
+                      <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Kriteria Penilaian {newAssessment.subject}</h5>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {Object.keys(newAssessment.criteria).map((criterion) => (
                           <div key={criterion}>
@@ -1748,7 +1879,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                       <div className="pt-4 border-top border-slate-200 flex justify-between items-center">
                         <span className="text-xs font-bold text-slate-500">Rata-rata Nilai:</span>
                         <span className="text-lg font-black text-brand-600">
-                          {Math.round((Object.values(newAssessment.criteria) as number[]).reduce((a, b) => a + b, 0) / 4)}
+                          {Math.round((Object.values(newAssessment.criteria) as number[]).reduce((a, b) => a + b, 0) / Math.max(1, Object.keys(newAssessment.criteria).length))}
                         </span>
                       </div>
                     </div>
@@ -1823,7 +1954,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                         className="w-full px-4 py-3 bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-500 outline-none cursor-not-allowed"
                       />
                     </div>
-                    {editingAssessment.subject !== 'Fashion Show' && (
+                    {(!editingAssessment.criteria || Object.keys(editingAssessment.criteria).length === 0) && (
                       <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Nilai (0-100)</label>
                         <input 
@@ -1839,9 +1970,9 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                     )}
                   </div>
 
-                  {editingAssessment.subject === 'Fashion Show' && editingAssessment.criteria && (
+                  {editingAssessment.criteria && Object.keys(editingAssessment.criteria).length > 0 && (
                     <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
-                      <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Kriteria Penilaian Fashion Show</h5>
+                      <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Kriteria Penilaian {editingAssessment.subject}</h5>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {Object.keys(editingAssessment.criteria).map((criterion) => (
                           <div key={criterion}>
@@ -1867,7 +1998,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                       <div className="pt-4 border-top border-slate-200 flex justify-between items-center">
                         <span className="text-xs font-bold text-slate-500">Rata-rata Nilai:</span>
                         <span className="text-lg font-black text-brand-600">
-                          {Math.round((Object.values(editingAssessment.criteria) as number[]).reduce((a, b) => a + b, 0) / 4)}
+                          {Math.round((Object.values(editingAssessment.criteria) as number[]).reduce((a, b) => a + b, 0) / Math.max(1, Object.keys(editingAssessment.criteria).length))}
                         </span>
                       </div>
                     </div>
@@ -2023,45 +2154,107 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
               </div>
 
               <div className="p-6 overflow-y-auto">
-                <p className="text-sm text-slate-500 mb-4">
-                  Pilih maksimal 2 kelompok untuk dinilai sekaligus.
-                </p>
-                <div className="space-y-2">
-                  {groups.map((g) => (
-                    <label 
-                      key={g.id} 
-                      className={cn(
-                        "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all",
-                        selectedQrGroups.includes(g.id) 
-                          ? "bg-brand-50 border-brand-500 ring-1 ring-brand-500" 
-                          : "bg-white border-slate-200 hover:border-brand-300"
-                      )}
-                    >
-                      <input 
-                        type="checkbox"
-                        className="w-5 h-5 rounded text-brand-600 focus:ring-brand-500 border-gray-300"
-                        checked={selectedQrGroups.includes(g.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            if (selectedQrGroups.length < 2) {
-                              setSelectedQrGroups([...selectedQrGroups, g.id]);
+                <div className="mb-6">
+                  <p className="text-sm font-bold text-slate-900 mb-2">1. Pilih Perlombaan</p>
+                  <select 
+                    value={selectedQrSubject}
+                    onChange={(e) => {
+                      setSelectedQrSubject(e.target.value);
+                      setSelectedQrCriteria([]); // Reset criteria when subject changes
+                    }}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                  >
+                    {(Array.isArray(subjects) ? subjects : []).map(s => (
+                      <option key={s.id} value={s.name}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="mb-6">
+                  <p className="text-sm font-bold text-slate-900 mb-2">2. Pilih Kelompok</p>
+                  <p className="text-xs text-slate-500 mb-3">
+                    Pilih maksimal 2 kelompok untuk dinilai sekaligus.
+                  </p>
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                    {groups.map((g) => (
+                      <label 
+                        key={g.id} 
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all",
+                          selectedQrGroups.includes(g.id) 
+                            ? "bg-brand-50 border-brand-500 ring-1 ring-brand-500" 
+                            : "bg-white border-slate-200 hover:border-brand-300"
+                        )}
+                      >
+                        <input 
+                          type="checkbox"
+                          className="w-5 h-5 rounded text-brand-600 focus:ring-brand-500 border-gray-300"
+                          checked={selectedQrGroups.includes(g.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              if (selectedQrGroups.length < 2) {
+                                setSelectedQrGroups([...selectedQrGroups, g.id]);
+                              }
+                            } else {
+                              setSelectedQrGroups(selectedQrGroups.filter(id => id !== g.id));
                             }
-                          } else {
-                            setSelectedQrGroups(selectedQrGroups.filter(id => id !== g.id));
-                          }
-                        }}
-                      />
-                      <span className="font-medium text-slate-900">{g.name}</span>
-                    </label>
-                  ))}
+                          }}
+                        />
+                        <span className="font-medium text-slate-900">{g.name}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-sm font-bold text-slate-900 mb-2">3. Pilih Kriteria Penilaian</p>
+                  <p className="text-xs text-slate-500 mb-3">
+                    Pilih kriteria apa saja yang akan dinilai oleh {qrRole}.
+                  </p>
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
+                    {criteriaList.filter(c => c.subject === selectedQrSubject).map((c) => (
+                      <label 
+                        key={c.id} 
+                        className={cn(
+                          "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all",
+                          selectedQrCriteria.includes(c.name) 
+                            ? "bg-brand-50 border-brand-500 ring-1 ring-brand-500" 
+                            : "bg-white border-slate-200 hover:border-brand-300"
+                        )}
+                      >
+                        <input 
+                          type="checkbox"
+                          className="w-5 h-5 rounded text-brand-600 focus:ring-brand-500 border-gray-300"
+                          checked={selectedQrCriteria.includes(c.name)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedQrCriteria([...selectedQrCriteria, c.name]);
+                            } else {
+                              setSelectedQrCriteria(selectedQrCriteria.filter(name => name !== c.name));
+                            }
+                          }}
+                        />
+                        <div>
+                          <span className="font-medium text-slate-900 block">{c.name}</span>
+                        </div>
+                      </label>
+                    ))}
+                    {criteriaList.filter(c => c.subject === selectedQrSubject).length === 0 && (
+                      <div className="p-4 bg-slate-50 rounded-xl text-center text-sm text-slate-500">
+                        Belum ada kriteria untuk perlombaan ini. Tambahkan di Master Kriteria.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
               <div className="p-6 border-t border-slate-100 bg-slate-50 shrink-0">
                 <button 
-                  disabled={selectedQrGroups.length === 0}
+                  disabled={selectedQrGroups.length === 0 || selectedQrCriteria.length === 0}
                   onClick={() => {
-                    const url = `${window.location.origin}${month ? `/${month}` : ''}/judge/fashion-show?role=${qrRole}&group_id=${selectedQrGroups.join(',')}`;
+                    const criteriaParam = encodeURIComponent(selectedQrCriteria.join(','));
+                    const subjectParam = encodeURIComponent(selectedQrSubject);
+                    const url = `${window.location.origin}${month ? `/${month}` : ''}/judge/${subjectParam}?role=${qrRole}&group_id=${selectedQrGroups.join(',')}&criteria=${criteriaParam}`;
                     setQrData({
                       url,
                       title: `QR Code ${qrRole}`,
