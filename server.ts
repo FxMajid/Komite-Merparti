@@ -429,6 +429,46 @@ app.post("/api/settings/qr-status", async (req, res) => {
   }
 });
 
+app.get("/api/settings/formula", async (req, res) => {
+  if (!db) return res.status(500).json({ error: "Database not initialized" });
+  try {
+    const docId = req.query.month === 'april' ? "formula_april" : "formula";
+    const doc = await db.collection("settings").doc(docId).get();
+    if (!doc.exists) {
+      const defaultFormula = { 
+        juriWeight: 35, 
+        pesertaWeight: 30, 
+        merpatiWeight: 30, 
+        bonusWeight: 5 
+      };
+      await db.collection("settings").doc(docId).set(defaultFormula);
+      return res.json(defaultFormula);
+    }
+    res.json(doc.data());
+  } catch (error: any) {
+    console.error("Get formula error:", error);
+    res.status(500).json({ error: "Failed to get formula settings" });
+  }
+});
+
+app.post("/api/settings/formula", async (req, res) => {
+  if (!db) return res.status(500).json({ error: "Database not initialized" });
+  try {
+    const docId = req.query.month === 'april' ? "formula_april" : "formula";
+    const { juriWeight, pesertaWeight, merpatiWeight, bonusWeight } = req.body;
+    await db.collection("settings").doc(docId).set({ 
+      juriWeight: Number(juriWeight), 
+      pesertaWeight: Number(pesertaWeight), 
+      merpatiWeight: Number(merpatiWeight), 
+      bonusWeight: Number(bonusWeight) 
+    }, { merge: true });
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Update formula error:", error);
+    res.status(500).json({ error: "Failed to update formula settings" });
+  }
+});
+
 // Seed Groups Function
 async function seedGroups(month?: string) {
   if (!db) return;

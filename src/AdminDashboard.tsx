@@ -25,7 +25,9 @@ import {
   QrCode,
   Trophy,
   Medal,
-  Crown
+  Crown,
+  Settings,
+  Save
 } from 'lucide-react';
 import QRCode from "react-qr-code";
 import { 
@@ -99,7 +101,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
   const [userRole, setUserRole] = useState(localStorage.getItem('userRole') || '');
   const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [loginError, setLoginError] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'assessments' | 'ranking' | 'subjects'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'groups' | 'assessments' | 'ranking' | 'subjects' | 'formula'>('overview');
   const [qrData, setQrData] = useState<{url: string, title: string, desc: string} | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
   const [subjects, setSubjects] = useState<Subject[]>([]);
@@ -108,6 +110,13 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
   const [dbStatus, setDbStatus] = useState<'connected' | 'error' | 'loading'>('loading');
   const [dbError, setDbError] = useState<string>('');
   const [isAddingAssessment, setIsAddingAssessment] = useState(false);
+  const [formula, setFormula] = useState({
+    juriWeight: 35,
+    pesertaWeight: 30,
+    merpatiWeight: 30,
+    bonusWeight: 5
+  });
+  const [isSavingFormula, setIsSavingFormula] = useState(false);
   const [editingAssessment, setEditingAssessment] = useState<Assessment | null>(null);
   
   // QR Generation State
@@ -224,20 +233,26 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
         ? pesertaAssessments.reduce((sum, a) => sum + a.score, 0) / pesertaAssessments.length 
         : 0;
 
-      // 4. Hitung Nilai dengan Bobot (Juri 35%, Peserta 30%, Merpati 30%)
+      // 4. Hitung Nilai dengan Bobot dari formula
+      const jWeight = formula.juriWeight / 100;
+      const pWeight = formula.pesertaWeight / 100;
+      const mWeight = formula.merpatiWeight / 100;
+      const bWeight = formula.bonusWeight / 100;
+      const fashionTotalWeight = jWeight + pWeight;
+
       let fashionScore = 0;
       if (juriAssessments.length > 0 && pesertaAssessments.length > 0) {
-        fashionScore = (juriAvg * 0.35) + (pesertaAvg * 0.30);
+        fashionScore = (juriAvg * jWeight) + (pesertaAvg * pWeight);
       } else if (juriAssessments.length > 0) {
-        fashionScore = juriAvg * 0.65; // 65% Juri jika tidak ada peserta
+        fashionScore = juriAvg * fashionTotalWeight; 
       } else if (pesertaAssessments.length > 0) {
-        fashionScore = pesertaAvg * 0.65; // 65% Peserta jika tidak ada juri
+        fashionScore = pesertaAvg * fashionTotalWeight; 
       }
 
-      const merpatiScore = merpatiAvg * 0.30;
+      const merpatiScore = merpatiAvg * mWeight;
 
-      // 5. Nilai Akhir = Fashion Score + Merpati Score + (Total Bonus * 5%)
-      const avgScore = fashionScore + merpatiScore + (totalBonus * 0.05);
+      // 5. Nilai Akhir = Fashion Score + Merpati Score + (Total Bonus * bonusWeight)
+      const avgScore = fashionScore + merpatiScore + (totalBonus * bWeight);
 
       return {
         ...group,
@@ -254,7 +269,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
     });
 
     return groupStats.sort((a, b) => b.avgScore - a.avgScore);
-  }, [groups, assessments]);
+  }, [groups, assessments, formula]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -285,23 +300,26 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [groupsRes, assessmentsRes, summaryRes, subjectsRes] = await Promise.all([
+      const [groupsRes, assessmentsRes, summaryRes, subjectsRes, formulaRes] = await Promise.all([
         fetch(`/api/groups${month ? `?month=${month}` : ''}`),
         fetch(`/api/assessments${month ? `?month=${month}` : ''}`),
         fetch(`/api/summary${month ? `?month=${month}` : ''}`),
-        fetch(`/api/subjects${month ? `?month=${month}` : ''}`)
+        fetch(`/api/subjects${month ? `?month=${month}` : ''}`),
+        fetch(`/api/settings/formula${month ? `?month=${month}` : ''}`)
       ]);
       
-      if (groupsRes.ok && assessmentsRes.ok && summaryRes.ok && subjectsRes.ok) {
+      if (groupsRes.ok && assessmentsRes.ok && summaryRes.ok && subjectsRes.ok && formulaRes.ok) {
         const groupsData = await groupsRes.json();
         const assessmentsData = await assessmentsRes.json();
         const summaryData = await summaryRes.json();
         const subjectsData = await subjectsRes.json();
+        const formulaData = await formulaRes.json();
         
         setGroups(groupsData);
         setAssessments(assessmentsData);
         setSummary(summaryData);
         setSubjects(subjectsData);
+        setFormula(formulaData);
         setDbStatus('connected');
         setDbError('');
       } else {
@@ -460,6 +478,31 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
         }
       }
     });
+  };
+
+  const handleSaveFormula = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingFormula(true);
+    try {
+      const res = await fetch(`/api/settings/formula${month ? `?month=${month}` : ''}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(formula)
+      });
+      if (res.ok) {
+        setAlertModal({ isOpen: true, title: 'Sukses', message: 'Formula penilaian berhasil disimpan!' });
+        fetchData();
+      } else {
+        setAlertModal({ isOpen: true, title: 'Gagal', message: 'Gagal menyimpan formula penilaian.' });
+      }
+    } catch (error) {
+      console.error("Error saving formula:", error);
+      setAlertModal({ isOpen: true, title: 'Error', message: 'Terjadi kesalahan saat menyimpan formula.' });
+    } finally {
+      setIsSavingFormula(false);
+    }
   };
 
   const handleAddSubject = async (e: React.FormEvent) => {
@@ -683,6 +726,18 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
             <Medal size={20} />
             <span>Data Perlombaan</span>
           </button>
+          <button 
+            onClick={() => setActiveTab('formula')}
+            className={cn(
+              "w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200",
+              activeTab === 'formula' 
+                ? "bg-brand-50 text-brand-700 font-semibold" 
+                : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+            )}
+          >
+            <Settings size={20} />
+            <span>Formula Penilaian</span>
+          </button>
 
           <div className="pt-4 mt-4 border-t border-slate-100 space-y-2">
             <div className="flex items-center gap-2 px-4 py-2 hover:bg-slate-50 rounded-xl transition-all duration-200 group">
@@ -787,6 +842,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
               {activeTab === 'subjects' && 'Manajemen Data Perlombaan'}
               {activeTab === 'assessments' && 'Riwayat Penilaian'}
               {activeTab === 'ranking' && 'Ranking & Klasemen'}
+              {activeTab === 'formula' && 'Formula Penilaian'}
             </h2>
             <p className="text-sm text-slate-500">Selamat datang kembali, Admin</p>
           </div>
@@ -800,6 +856,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                 className="pl-10 pr-4 py-2 bg-slate-100 border-transparent focus:bg-white focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 rounded-xl text-sm transition-all w-64"
               />
             </div>
+            {['groups', 'subjects', 'assessments'].includes(activeTab) && (
               <button 
                 onClick={() => {
                   if (activeTab === 'groups') setIsAddingGroup(true);
@@ -815,6 +872,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                    'Input Nilai'}
                 </span>
               </button>
+            )}
           </div>
         </header>
 
@@ -1186,6 +1244,122 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                       </tbody>
                     </table>
                   </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'formula' && (
+                <motion.div 
+                  key="formula"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 max-w-2xl"
+                >
+                  <div className="mb-8">
+                    <h2 className="text-2xl font-bold text-slate-900 mb-2">Formula Penilaian</h2>
+                    <p className="text-slate-500">Atur bobot persentase untuk setiap aspek penilaian. Total bobot sebaiknya 100%.</p>
+                  </div>
+
+                  <form onSubmit={handleSaveFormula} className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <label className="block text-sm font-bold text-slate-700">Bobot Fashion Show (Juri)</label>
+                        <div className="relative">
+                          <input 
+                            type="number" 
+                            min="0"
+                            max="100"
+                            value={formula.juriWeight}
+                            onChange={(e) => setFormula({...formula, juriWeight: Number(e.target.value)})}
+                            className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
+                        </div>
+                        <p className="text-xs text-slate-500">Nilai rata-rata dari Juri untuk Fashion Show</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-bold text-slate-700">Bobot Fashion Show (Peserta)</label>
+                        <div className="relative">
+                          <input 
+                            type="number" 
+                            min="0"
+                            max="100"
+                            value={formula.pesertaWeight}
+                            onChange={(e) => setFormula({...formula, pesertaWeight: Number(e.target.value)})}
+                            className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
+                        </div>
+                        <p className="text-xs text-slate-500">Nilai rata-rata dari Peserta untuk Fashion Show</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-bold text-slate-700">Bobot Merpati Ekor Kata</label>
+                        <div className="relative">
+                          <input 
+                            type="number" 
+                            min="0"
+                            max="100"
+                            value={formula.merpatiWeight}
+                            onChange={(e) => setFormula({...formula, merpatiWeight: Number(e.target.value)})}
+                            className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
+                        </div>
+                        <p className="text-xs text-slate-500">Nilai rata-rata untuk Merpati Ekor Kata</p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-sm font-bold text-slate-700">Bobot Bonus</label>
+                        <div className="relative">
+                          <input 
+                            type="number" 
+                            min="0"
+                            max="100"
+                            value={formula.bonusWeight}
+                            onChange={(e) => setFormula({...formula, bonusWeight: Number(e.target.value)})}
+                            className="w-full pl-4 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-4 focus:ring-brand-500/10 focus:border-brand-500 outline-none transition-all"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
+                        </div>
+                        <p className="text-xs text-slate-500">Pengali untuk total nilai bonus</p>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 flex items-start gap-3">
+                      <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center shrink-0">
+                        <AlertCircle size={16} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-blue-900 mb-1">Informasi Formula</h4>
+                        <p className="text-xs text-blue-700 leading-relaxed">
+                          Total bobot saat ini: <strong className="font-bold">{formula.juriWeight + formula.pesertaWeight + formula.merpatiWeight}%</strong> (tidak termasuk bonus).<br/>
+                          Jika salah satu penilai (Juri/Peserta) tidak ada, bobot Fashion Show akan digabungkan secara otomatis ({formula.juriWeight + formula.pesertaWeight}%).
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-slate-100 flex justify-end">
+                      <button 
+                        type="submit"
+                        disabled={isSavingFormula}
+                        className="bg-brand-600 hover:bg-brand-700 text-white px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-brand-200 disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {isSavingFormula ? (
+                          <>
+                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span>Menyimpan...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Save size={20} />
+                            <span>Simpan Formula</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
                 </motion.div>
               )}
 
