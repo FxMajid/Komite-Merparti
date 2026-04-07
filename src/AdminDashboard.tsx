@@ -28,7 +28,8 @@ import {
   Crown,
   Settings,
   Save,
-  ListChecks
+  ListChecks,
+  Star
 } from 'lucide-react';
 import QRCode from "react-qr-code";
 import { 
