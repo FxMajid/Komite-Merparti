@@ -220,13 +220,17 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
   });
 
   const rankings = useMemo(() => {
+    const fashionSubjectName = subjects[0]?.name || 'Fashion Show';
+    const merpatiSubjectName = subjects[1]?.name || 'Merpati Ekor Kata';
+    const bonusSubjectName = subjects[2]?.name || 'Bonus';
+
     const groupStats = groups.map(group => {
       const groupAssessments = assessments.filter(a => a.group_id === group.id);
       
       // 1. Pisahkan berdasarkan kategori
-      const fashionAssessments = groupAssessments.filter(a => a.subject === 'Fashion Show');
-      const merpatiAssessments = groupAssessments.filter(a => a.subject === 'Merpati Ekor Kata');
-      const bonusAssessments = groupAssessments.filter(a => a.subject === 'Bonus');
+      const fashionAssessments = groupAssessments.filter(a => a.subject === fashionSubjectName);
+      const merpatiAssessments = groupAssessments.filter(a => a.subject === merpatiSubjectName);
+      const bonusAssessments = groupAssessments.filter(a => a.subject === bonusSubjectName);
 
       // 2. Hitung rata-rata per kategori utama
       const fashionAvg = fashionAssessments.length > 0 
@@ -774,6 +778,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                 onClick={() => {
                   setQrRole('Juri');
                   setSelectedQrGroups([]);
+                  setSelectedQrSubject(subjects[0]?.name || 'Fashion Show');
                   setIsQrModalOpen(true);
                 }}
                 className="flex-1 flex items-center gap-3 text-slate-500 group-hover:text-slate-900 text-left"
@@ -798,6 +803,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                 onClick={() => {
                   setQrRole('Peserta');
                   setSelectedQrGroups([]);
+                  setSelectedQrSubject(subjects[0]?.name || 'Fashion Show');
                   setIsQrModalOpen(true);
                 }}
                 className="flex-1 flex items-center gap-3 text-slate-500 group-hover:text-slate-900 text-left"
@@ -1196,6 +1202,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                                     e.stopPropagation();
                                     setQrRole('Juri');
                                     setSelectedQrGroups([g.id]);
+                                    setSelectedQrSubject(subjects[0]?.name || 'Fashion Show');
                                     setIsQrModalOpen(true);
                                   }}
                                   className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-all cursor-pointer z-30"
@@ -1395,7 +1402,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                   <form onSubmit={handleSaveFormula} className="space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <div className="space-y-2">
-                        <label className="block text-sm font-bold text-slate-700">Bobot Fashion Show (Juri)</label>
+                        <label className="block text-sm font-bold text-slate-700">Bobot {subjects[0]?.name || 'Fashion Show'} (Juri)</label>
                         <div className="relative">
                           <input 
                             type="number" 
@@ -1407,11 +1414,11 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
                         </div>
-                        <p className="text-xs text-slate-500">Nilai rata-rata dari Juri untuk Fashion Show</p>
+                        <p className="text-xs text-slate-500">Nilai rata-rata dari Juri untuk {subjects[0]?.name || 'Fashion Show'}</p>
                       </div>
 
                       <div className="space-y-2">
-                        <label className="block text-sm font-bold text-slate-700">Bobot Fashion Show (Peserta)</label>
+                        <label className="block text-sm font-bold text-slate-700">Bobot {subjects[0]?.name || 'Fashion Show'} (Peserta)</label>
                         <div className="relative">
                           <input 
                             type="number" 
@@ -1423,11 +1430,11 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
                         </div>
-                        <p className="text-xs text-slate-500">Nilai rata-rata dari Peserta untuk Fashion Show</p>
+                        <p className="text-xs text-slate-500">Nilai rata-rata dari Peserta untuk {subjects[0]?.name || 'Fashion Show'}</p>
                       </div>
 
                       <div className="space-y-2">
-                        <label className="block text-sm font-bold text-slate-700">Bobot Merpati Ekor Kata</label>
+                        <label className="block text-sm font-bold text-slate-700">Bobot {subjects[1]?.name || 'Merpati Ekor Kata'}</label>
                         <div className="relative">
                           <input 
                             type="number" 
@@ -1439,11 +1446,11 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
                         </div>
-                        <p className="text-xs text-slate-500">Nilai rata-rata untuk Merpati Ekor Kata</p>
+                        <p className="text-xs text-slate-500">Nilai rata-rata untuk {subjects[1]?.name || 'Merpati Ekor Kata'}</p>
                       </div>
 
                       <div className="space-y-2">
-                        <label className="block text-sm font-bold text-slate-700">Bobot Bonus</label>
+                        <label className="block text-sm font-bold text-slate-700">Bobot {subjects[2]?.name || 'Bonus'}</label>
                         <div className="relative">
                           <input 
                             type="number" 
@@ -1455,7 +1462,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
                         </div>
-                        <p className="text-xs text-slate-500">Pengali untuk total nilai bonus</p>
+                        <p className="text-xs text-slate-500">Pengali untuk total nilai {subjects[2]?.name || 'Bonus'}</p>
                       </div>
                     </div>
 
@@ -1467,7 +1474,7 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                         <h4 className="text-sm font-bold text-blue-900 mb-1">Informasi Formula</h4>
                         <p className="text-xs text-blue-700 leading-relaxed">
                           Total bobot saat ini: <strong className="font-bold">{formula.juriWeight + formula.pesertaWeight + formula.merpatiWeight}%</strong> (tidak termasuk bonus).<br/>
-                          Jika salah satu penilai (Juri/Peserta) tidak ada, bobot Fashion Show akan digabungkan secara otomatis ({formula.juriWeight + formula.pesertaWeight}%).
+                          Jika salah satu penilai (Juri/Peserta) tidak ada, bobot {subjects[0]?.name || 'Fashion Show'} akan digabungkan secara otomatis ({formula.juriWeight + formula.pesertaWeight}%).
                         </p>
                       </div>
                     </div>
@@ -1588,9 +1595,9 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                             <th className="px-6 py-4 text-center w-16">Rank</th>
                             <th className="px-6 py-4">Kelompok</th>
                             <th className="px-6 py-4 text-center">Total Nilai</th>
-                            <th className="px-6 py-4 text-center">Fashion Show</th>
-                            <th className="px-6 py-4 text-center">Merpati Ekor Kata</th>
-                            <th className="px-6 py-4 text-center">Total Bonus</th>
+                            <th className="px-6 py-4 text-center">{subjects[0]?.name || 'Fashion Show'}</th>
+                            <th className="px-6 py-4 text-center">{subjects[1]?.name || 'Merpati Ekor Kata'}</th>
+                            <th className="px-6 py-4 text-center">{subjects[2]?.name || 'Bonus'}</th>
                             <th className="px-6 py-4 text-center">Rata-rata Juri</th>
                             <th className="px-6 py-4 text-center">Rata-rata Peserta</th>
                             <th className="px-6 py-4 text-center">Total Vote</th>
@@ -2343,9 +2350,10 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
               </div>
               <div className="p-6 overflow-y-auto">
                 {(() => {
+                  const fashionSubjectName = subjects[0]?.name || 'Fashion Show';
                   const filteredAssessments = assessments.filter(
                     a => a.group_id === assessmentDetailsModal.groupId &&
-                         a.subject === 'Fashion Show' &&
+                         a.subject === fashionSubjectName &&
                          (assessmentDetailsModal.role === 'Juri' ? (!a.role || a.role === 'Juri') : a.role === 'Peserta')
                   );
 
