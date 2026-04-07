@@ -100,6 +100,11 @@ interface AdminDashboardProps {
   month?: string;
 }
 
+const getAbbreviation = (name: string) => {
+  if (!name) return '';
+  return name.split(' ').map(word => word[0].toUpperCase()).join('');
+};
+
 export default function AdminDashboard({ month }: AdminDashboardProps) {
   const navigate = useNavigate();
   const [isLoggedIn, setIsLoggedIn] = useState(localStorage.getItem('isLoggedIn') === 'true');
@@ -1519,9 +1524,9 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                           <h3 className="font-bold text-slate-900 text-lg">{rankings[1].name}</h3>
                           <p className="text-slate-500 font-medium text-xl">{rankings[1].avgScore.toFixed(1)}</p>
                           <div className="flex gap-2 text-[10px] mt-1 justify-center flex-wrap">
-                            <span className="text-pink-600 font-bold bg-pink-50 px-1.5 py-0.5 rounded">FS: {rankings[1].fashionAvg.toFixed(1)}</span>
-                            <span className="text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">MK: {rankings[1].merpatiAvg.toFixed(1)}</span>
-                            <span className="text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">B: {rankings[1].bonusAvg.toFixed(1)}</span>
+                            <span className="text-pink-600 font-bold bg-pink-50 px-1.5 py-0.5 rounded">{getAbbreviation(subjects[0]?.name || 'Fashion Show')}: {rankings[1].fashionAvg.toFixed(1)}</span>
+                            <span className="text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">{getAbbreviation(subjects[1]?.name || 'Merpati Ekor Kata')}: {rankings[1].merpatiAvg.toFixed(1)}</span>
+                            <span className="text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">{getAbbreviation(subjects[2]?.name || 'Bonus')}: {rankings[1].bonusAvg.toFixed(1)}</span>
                           </div>
                         </div>
                         <div className="w-24 md:w-32 h-32 md:h-40 bg-slate-200 rounded-t-2xl flex items-end justify-center pb-4 relative">
@@ -1541,9 +1546,9 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                           <h3 className="font-bold text-slate-900 text-xl">{rankings[0].name}</h3>
                           <p className="text-brand-600 font-bold text-2xl">{rankings[0].avgScore.toFixed(1)}</p>
                           <div className="flex gap-2 text-xs mt-1 justify-center flex-wrap">
-                            <span className="text-pink-600 font-bold bg-pink-50 px-2 py-0.5 rounded">FS: {rankings[0].fashionAvg.toFixed(1)}</span>
-                            <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded">MK: {rankings[0].merpatiAvg.toFixed(1)}</span>
-                            <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">B: {rankings[0].bonusAvg.toFixed(1)}</span>
+                            <span className="text-pink-600 font-bold bg-pink-50 px-2 py-0.5 rounded">{getAbbreviation(subjects[0]?.name || 'Fashion Show')}: {rankings[0].fashionAvg.toFixed(1)}</span>
+                            <span className="text-indigo-600 font-bold bg-indigo-50 px-2 py-0.5 rounded">{getAbbreviation(subjects[1]?.name || 'Merpati Ekor Kata')}: {rankings[0].merpatiAvg.toFixed(1)}</span>
+                            <span className="text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded">{getAbbreviation(subjects[2]?.name || 'Bonus')}: {rankings[0].bonusAvg.toFixed(1)}</span>
                           </div>
                         </div>
                         <div className="w-28 md:w-40 h-40 md:h-56 bg-gradient-to-b from-amber-300 to-amber-400 rounded-t-2xl flex items-end justify-center pb-6 relative shadow-xl shadow-amber-200">
@@ -1562,9 +1567,9 @@ export default function AdminDashboard({ month }: AdminDashboardProps) {
                           <h3 className="font-bold text-slate-900 text-lg">{rankings[2].name}</h3>
                           <p className="text-slate-500 font-medium text-xl">{rankings[2].avgScore.toFixed(1)}</p>
                           <div className="flex gap-2 text-[10px] mt-1 justify-center flex-wrap">
-                            <span className="text-pink-600 font-bold bg-pink-50 px-1.5 py-0.5 rounded">FS: {rankings[2].fashionAvg.toFixed(1)}</span>
-                            <span className="text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">MK: {rankings[2].merpatiAvg.toFixed(1)}</span>
-                            <span className="text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">B: {rankings[2].bonusAvg.toFixed(1)}</span>
+                            <span className="text-pink-600 font-bold bg-pink-50 px-1.5 py-0.5 rounded">{getAbbreviation(subjects[0]?.name || 'Fashion Show')}: {rankings[2].fashionAvg.toFixed(1)}</span>
+                            <span className="text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">{getAbbreviation(subjects[1]?.name || 'Merpati Ekor Kata')}: {rankings[2].merpatiAvg.toFixed(1)}</span>
+                            <span className="text-emerald-600 font-bold bg-emerald-50 px-1.5 py-0.5 rounded">{getAbbreviation(subjects[2]?.name || 'Bonus')}: {rankings[2].bonusAvg.toFixed(1)}</span>
                           </div>
                         </div>
                         <div className="w-24 md:w-32 h-24 md:h-32 bg-orange-200 rounded-t-2xl flex items-end justify-center pb-4 relative">
